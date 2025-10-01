@@ -1,0 +1,55 @@
+# Django Core
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+django-environ==0.11.2
+
+# Database
+psycopg2-binary==2.9.9
+redis==5.0.1
+
+# Authentication & Security
+djangorestframework-simplejwt==5.3.0
+django-allauth==0.57.0
+django-ratelimit==4.1.0
+
+# Background Tasks
+celery==5.3.4
+django-celery-beat==2.5.0
+django-celery-results==2.5.1
+
+# API & External Services
+requests==2.31.0
+httpx==0.25.2
+python-dotenv==1.0.0
+
+# Testing
+pytest==7.4.3
+pytest-django==4.7.0
+pytest-cov==4.1.0
+factory-boy==3.3.0
+django-test-plus==2.4.1
+
+# Code Quality
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+mypy==1.7.1
+django-stubs==4.2.7
+
+# Monitoring & Logging
+sentry-sdk==1.38.0
+django-extensions==3.2.3
+
+# Development Tools
+django-debug-toolbar==4.2.0
+django-silk==5.0.4
+
+# Production
+gunicorn==21.2.0
+whitenoise==6.6.0
+django-storages==1.14.2
+boto3==1.34.0
+
+# Documentation
+drf-spectacular==0.26.5
