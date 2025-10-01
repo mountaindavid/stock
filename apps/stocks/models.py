@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from datetime import datetime
 
 class Stock(models.Model):
     ticker = models.CharField(max_length=10, unique=True)
@@ -11,6 +13,20 @@ class Stock(models.Model):
     def __str__(self):
         return self.ticker
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['ticker']),  # Already unique, but explicit
+            models.Index(fields=['sector']),  # For sector filtering
+            models.Index(fields=['last_updated']),  # For price update queries
+        ]
+
+    def clean(self):
+        if self.current_price and self.current_price <= 0:
+            raise ValidationError(
+                'Price must be positive'
+            )
+
+
 class PriceHistory(models.Model):
     stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -19,6 +35,17 @@ class PriceHistory(models.Model):
     
     class Meta:
         unique_together = ['stock', 'date']
+        indexes = [
+            models.Index(fields=['stock', 'date']),  # For price lookups
+            models.Index(fields=['date']),  # For date range queries
+        ]
 
     def __str__(self):
         return f"{self.stock.ticker} - {self.date}: ${self.price}"
+
+    def clean(self):
+        if self.price <= 0:
+            raise ValidationError('Price must be positive')
+        
+        if self.date > datetime.now().date():
+            raise ValidationError('Date cannot be in the future')

@@ -1,16 +1,24 @@
 from django.db import models
 from apps.users.models import User
 from apps.stocks.models import Stock
+from django.core.exceptions import ValidationError
+from django.db.models import Sum, Case, When, IntegerField
 
 class Portfolio(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, null=False, blank=False)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'name'])
+        ]
+        unique_together = ['user', 'name']
 
 
 class Transaction(models.Model):
@@ -24,8 +32,49 @@ class Transaction(models.Model):
     transaction_type = models.CharField(max_length=4, choices=TRANSACTION_TYPES)
     quantity = models.PositiveIntegerField()
     price_per_share = models.DecimalField(max_digits=10, decimal_places=2)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
     transaction_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.stock.ticker
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['portfolio', 'stock']), 
+            models.Index(fields=['transaction_date']),  
+            models.Index(fields=['transaction_type']), 
+        ]
+    
+    def clean(self):
+        if self.price_per_share <= 0:
+            raise ValidationError(
+                'Price must be positive'
+            )
+
+        if self.transaction_type == 'SELL':
+            if self.quantity > self.get_owned_shares():
+                raise ValidationError(
+                    'You do not have enough shares to sell'
+                )
+    
+    def get_owned_shares(self):
+        """More efficient calculation using single query"""        
+        result = Transaction.objects.filter(
+            portfolio=self.portfolio,
+            stock=self.stock
+        ).aggregate(
+            total=Sum(
+                Case(
+                    When(transaction_type='BUY', then='quantity'),
+                    When(transaction_type='SELL', then=-models.F('quantity')),
+                    default=0,
+                    output_field=IntegerField()
+                )
+            )
+        )['total'] or 0
+    
+        return result
+
+    @property
+    def calculated_total(self):
+        """instead of stored total_amount"""
+        return self.quantity * self.price_per_share
