@@ -15,15 +15,23 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'is_active', 'date_joined']
 
     def validate_email(self, value):
-        """Validate email uniqueness for new users"""
-        if self.instance is None and User.objects.filter(email=value).exists():
-            raise serializers.ValidationError('Email already exists')
+        """Validate email uniqueness"""
+        if self.instance is None:  
+            if User.objects.filter(email=value).exists():
+                raise serializers.ValidationError('Email already exists')
+        else:  
+            if self.instance.email != value and User.objects.filter(email=value).exists():
+                raise serializers.ValidationError('Email already exists')
         return value
     
     def validate_username(self, value):
-        """Validate username uniqueness for new users"""
-        if self.instance is None and User.objects.filter(username=value).exists():
-            raise serializers.ValidationError('Username already exists')
+        """Validate username uniqueness"""
+        if self.instance is None:  
+            if User.objects.filter(username=value).exists():
+                raise serializers.ValidationError('Username already exists')
+        else:  
+            if self.instance.username != value and User.objects.filter(username=value).exists():
+                raise serializers.ValidationError('Username already exists')
         return value
     
     def validate_date_of_birth(self, value):
@@ -36,15 +44,8 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     """Serializer for user registration with password confirmation"""
     
-    password = serializers.CharField(
-        write_only=True, 
-        min_length=8,
-        style={'input_type': 'password'}
-    )
-    password_confirmation = serializers.CharField(
-        write_only=True,
-        style={'input_type': 'password'}
-    )
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirmation = serializers.CharField(write_only=True)
     
     class Meta:
         model = User
@@ -52,10 +53,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             'username', 'email', 'first_name', 'last_name', 
             'date_of_birth', 'password', 'password_confirmation'
         ]
-        extra_kwargs = {
-            'username': {'help_text': 'Required. 150 characters or fewer.'},
-            'email': {'help_text': 'Required. Enter a valid email address.'},
-        }
     
     def validate(self, attrs):
         """Validate password confirmation"""
@@ -69,7 +66,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         """Create user with hashed password"""
         validated_data.pop('password_confirmation')
         return User.objects.create_user(**validated_data)
-    
+
     def validate_email(self, value):
         """Validate email uniqueness"""
         if User.objects.filter(email=value).exists():
@@ -77,7 +74,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate_username(self, value):
-        """Validate username uniqueness"""
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError('Username already exists')
         return value

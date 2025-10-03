@@ -51,7 +51,7 @@ class Transaction(models.Model):
             )
 
         if self.transaction_type == 'SELL':
-            if self.quantity > self.get_owned_shares():
+            if self.pk and self.quantity > self.get_owned_shares():
                 raise ValidationError(
                     'You do not have enough shares to sell'
                 )
