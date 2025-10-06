@@ -117,3 +117,31 @@ class UpdateUserProfileSerializer(serializers.ModelSerializer):
         if value and value > datetime.now().date():
             raise serializers.ValidationError('Date of birth cannot be in the future')
         return value
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serializer for changing password"""
+    old_password = serializers.CharField(write_only = True, required = True)
+    new_password = serializers.CharField(write_only = True, required = True, min_length = 8)
+    new_password_confirmation = serializers.CharField(write_only = True, required = True)
+
+    def validate_old_password(self, value):
+        """Validate old password"""
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Old password is incorrect')
+        return value
+    
+    def validate(self, attrs):
+        """Validate password confirmation"""
+        if attrs['new_password'] != attrs['new_password_confirmation']:
+            raise serializers.ValidationError({
+                'new_password_confirmation': "New passwords don't match"
+            })
+        return attrs
+    
+    def save(self):
+        """Update user password"""
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
