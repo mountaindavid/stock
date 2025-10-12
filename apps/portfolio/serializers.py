@@ -26,6 +26,11 @@ class PortfolioSerializer(serializers.ModelSerializer):
             if Portfolio.objects.filter(user=user, name=value).exists():
                 raise serializers.ValidationError('Portfolio with this name already exists')
         return value
+    
+    def create(self, validated_data):
+        """Create portfolio with current user"""
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
 
 
 class TransactionSerializer(serializers.ModelSerializer):

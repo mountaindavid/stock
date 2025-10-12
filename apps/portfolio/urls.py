@@ -1,12 +1,7 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from . import views
 
-
-router = DefaultRouter()
-router.register(r'', views.PortfolioViewSet)
-router.register(r'transactions', views.TransactionViewSet)
-
 urlpatterns = [
-    path('', include(router.urls)),
+    path('', views.PortfolioListView.as_view(), name='portfolio-list'),
+    path('<int:pk>/', views.PortfolioDetailView.as_view(), name='portfolio-detail'),
 ]
