@@ -37,12 +37,14 @@ class TransactionSerializer(serializers.ModelSerializer):
     """Serializer for Transaction model"""
     
     stock_ticker = serializers.CharField(write_only=True)
+    ticker = serializers.CharField(source='stock.ticker', read_only=True) 
+    company_name = serializers.CharField(source='stock.name', read_only=True)
     
     class Meta:
         model = Transaction
         fields = [
-            'id', 'portfolio', 'stock', 'stock_ticker', 'transaction_type',
-            'quantity', 'price_per_share', 'transaction_date'
+            'id', 'stock', 'stock_ticker', 'ticker', 'company_name', 'portfolio',
+            'transaction_type', 'quantity', 'price_per_share', 'transaction_date'
         ]
         read_only_fields = ['id', 'portfolio', 'transaction_date']
     
@@ -70,14 +72,13 @@ class TransactionSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         """Validate transaction logic"""
         if attrs['transaction_type'] == 'SELL':
-            # Check if user has enough shares to sell
+            # Check if portfolio has enough shares to sell
             stock_ticker = attrs['stock_ticker']
-            portfolio = self.context['request'].user.portfolio_set.first()
-            
+            portfolio = self.context.get('portfolio')
             if portfolio:
-                # This would need to be implemented in the model
-                # For now, we'll skip this validation
-                pass
+                if attrs['quantity'] > portfolio.get_owned_shares(stock_ticker):
+                    raise serializers.ValidationError('You do not have enough shares to sell')
+                return attrs
         
         return attrs
     
@@ -89,10 +90,10 @@ class TransactionSerializer(serializers.ModelSerializer):
         if not stock:
             raise serializers.ValidationError('Stock validation failed')
         
-        # Get user's portfolio (assuming one portfolio per user for now)
-        portfolio = self.context['request'].user.portfolio_set.first()
+        # Get portfolio from context
+        portfolio = self.context.get('portfolio')
         if not portfolio:
-            raise serializers.ValidationError('User must have a portfolio to create transactions')
+            raise serializers.ValidationError('Portfolio must be provided in context')
         
         validated_data['stock'] = stock
         validated_data['portfolio'] = portfolio

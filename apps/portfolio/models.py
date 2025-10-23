@@ -14,6 +14,29 @@ class Portfolio(models.Model):
     def __str__(self):
         return self.name
 
+    def get_owned_shares(self, ticker):
+        """Get total owned shares for a specific ticker in this portfolio"""
+        try:
+            stock = Stock.objects.get(ticker=ticker)
+        except Stock.DoesNotExist:
+            return 0
+        
+        result = Transaction.objects.filter(
+            portfolio=self,
+            stock=stock
+        ).aggregate(
+            total=Sum(
+                Case(
+                    When(transaction_type='BUY', then='quantity'),
+                    When(transaction_type='SELL', then=-models.F('quantity')),
+                    default=0,
+                    output_field=IntegerField()
+                )
+            )
+        )['total'] or 0
+        
+        return result
+
     class Meta:
         indexes = [
             models.Index(fields=['user', 'name'])
@@ -51,28 +74,10 @@ class Transaction(models.Model):
             )
 
         if self.transaction_type == 'SELL':
-            if self.pk and self.quantity > self.get_owned_shares():
+            if self.pk and self.quantity > self.portfolio.get_owned_shares(self.stock.ticker):
                 raise ValidationError(
                     'You do not have enough shares to sell'
                 )
-    
-    def get_owned_shares(self):
-        """More efficient calculation using single query"""        
-        result = Transaction.objects.filter(
-            portfolio=self.portfolio,
-            stock=self.stock
-        ).aggregate(
-            total=Sum(
-                Case(
-                    When(transaction_type='BUY', then='quantity'),
-                    When(transaction_type='SELL', then=-models.F('quantity')),
-                    default=0,
-                    output_field=IntegerField()
-                )
-            )
-        )['total'] or 0
-    
-        return result
 
     @property
     def calculated_total(self):
