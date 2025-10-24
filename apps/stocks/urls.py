@@ -1,11 +1,9 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from . import views
 
-router = DefaultRouter()
-router.register(r'', views.StockViewSet)
-router.register(r'price-history', views.PriceHistoryViewSet)
-
 urlpatterns = [
-    path('', include(router.urls)),
+    path('', views.StockListView.as_view(), name='stock-list'),
+    path('<int:pk>/', views.StockDetailView.as_view(), name='stock-detail'),
+    path('<int:stock_id>/price-history/', views.PriceHistoryListView.as_view(), name='price-history-list'),
+    path('<int:stock_id>/price-history/<int:pk>/', views.PriceHistoryDetailView.as_view(), name='price-history-detail'),
 ]
