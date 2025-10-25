@@ -55,6 +55,7 @@ class Transaction(models.Model):
     transaction_type = models.CharField(max_length=4, choices=TRANSACTION_TYPES)
     quantity = models.PositiveIntegerField()
     price_per_share = models.DecimalField(max_digits=10, decimal_places=2)
+    date = models.DateField(null=True, blank=True, help_text="Manual date")
     transaction_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
