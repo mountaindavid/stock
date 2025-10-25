@@ -3,65 +3,6 @@ from .models import Portfolio, Transaction
 from apps.stocks.models import Stock
 from apps.stocks.services import YahooFinanceService
 
-class PortfolioSerializer(serializers.ModelSerializer):
-    """Serializer for Portfolio model"""
-    transactions = TransactionSerializer(many=True, read_only=True)
-
-    # Calculated fields
-    total_value = serializers.SerializerMethodField()
-    total_invested = serializers.SerializerMethodField()
-    total_profit_loss = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Portfolio
-        fields = [
-            'id', 'user', 'name', 'description', 
-            'created_at', 'updated_at',
-            'transactions', 'total_value', 'total_invested', 'total_profit_loss'
-        ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
-
-    def validate_name(self, value):
-        """Validate portfolio name uniqueness per user"""
-        user = self.context['request'].user
-        if self.instance:
-            # For updates, exclude current instance
-            if Portfolio.objects.filter(user=user, name=value).exclude(id=self.instance.id).exists():
-                raise serializers.ValidationError('Portfolio with this name already exists')
-        else:
-            # For creation
-            if Portfolio.objects.filter(user=user, name=value).exists():
-                raise serializers.ValidationError('Portfolio with this name already exists')
-        return value
-    
-    def create(self, validated_data):
-        """Create portfolio with current user"""
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
-
-    def get_total_value(self, obj):
-        """Calculate total current value of portfolio"""
-        total = 0
-        for transaction in obj.transactions.all():
-            if transaction.transaction_type == 'BUY':
-                service = YahooFinanceService()
-                current_price = service.get_stock_price(transaction.stock.ticker)
-                if current_price:
-                    total += current_price * transaction.quantity
-        return total
-
-    def get_total_invested(self, obj):
-        """Calculate total amount invested"""
-        total = 0
-        for transaction in obj.transactions.all():
-            if transaction.transaction_type == 'BUY':
-                total += transaction.price_per_share * transaction.quantity
-        return total
-
-    def get_total_profit_loss(self, obj):
-        """Calculate total profit/loss"""
-        return self.get_total_value(obj) - self.get_total_invested(obj)
-
 class TransactionSerializer(serializers.ModelSerializer):
     """Serializer for Transaction model"""
     
@@ -82,7 +23,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'stock', 'stock_ticker', 'ticker', 'company_name', 'portfolio',
             'transaction_type', 'quantity', 'price_per_share', 'date', 'transaction_date',
-            'purchase_total', 'current_price', 'current_total', 'profit_loss'
+            'purchase_total', 'current_price', 'current_total', 'profit_loss', 'profit_loss_percentage'
         ]
         read_only_fields = ['id', 'portfolio', 'transaction_date']
     
@@ -157,7 +98,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         
         return super().create(validated_data)
 
-
     def get_purchase_total(self, obj):
         """Calculate total purchase amount"""
         return obj.quantity * obj.price_per_share
@@ -177,4 +117,66 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def get_profit_loss_percentage(self, obj):
         """Calculate profit/loss percentage"""
-        return (self.get_profit_loss(obj) / self.get_purchase_total(obj)) * 100
+        purchase_total = self.get_purchase_total(obj)
+        if purchase_total == 0:
+            return 0
+        return (self.get_profit_loss(obj) / purchase_total) * 100
+
+class PortfolioSerializer(serializers.ModelSerializer):
+    """Serializer for Portfolio model"""
+    transactions = TransactionSerializer(many=True, read_only=True)
+
+    # Calculated fields
+    total_value = serializers.SerializerMethodField()
+    total_invested = serializers.SerializerMethodField()
+    total_profit_loss = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Portfolio
+        fields = [
+            'id', 'user', 'name', 'description', 
+            'created_at', 'updated_at',
+            'transactions', 'total_value', 'total_invested', 'total_profit_loss'
+        ]
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+    def validate_name(self, value):
+        """Validate portfolio name uniqueness per user"""
+        user = self.context['request'].user
+        if self.instance:
+            # For updates, exclude current instance
+            if Portfolio.objects.filter(user=user, name=value).exclude(id=self.instance.id).exists():
+                raise serializers.ValidationError('Portfolio with this name already exists')
+        else:
+            # For creation
+            if Portfolio.objects.filter(user=user, name=value).exists():
+                raise serializers.ValidationError('Portfolio with this name already exists')
+        return value
+    
+    def create(self, validated_data):
+        """Create portfolio with current user"""
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
+    def get_total_value(self, obj):
+        """Calculate total current value of portfolio"""
+        total = 0
+        for transaction in obj.transactions.all():
+            if transaction.transaction_type == 'BUY':
+                service = YahooFinanceService()
+                current_price = service.get_stock_price(transaction.stock.ticker)
+                if current_price:
+                    total += current_price * transaction.quantity
+        return total
+
+    def get_total_invested(self, obj):
+        """Calculate total amount invested"""
+        total = 0
+        for transaction in obj.transactions.all():
+            if transaction.transaction_type == 'BUY':
+                total += transaction.price_per_share * transaction.quantity
+        return total
+
+    def get_total_profit_loss(self, obj):
+        """Calculate total profit/loss"""
+        return self.get_total_value(obj) - self.get_total_invested(obj)
