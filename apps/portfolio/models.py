@@ -54,7 +54,7 @@ class Transaction(models.Model):
     stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
     transaction_type = models.CharField(max_length=4, choices=TRANSACTION_TYPES)
     quantity = models.PositiveIntegerField()
-    price_per_share = models.DecimalField(max_digits=10, decimal_places=2)
+    price_per_share = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     date = models.DateField(null=True, blank=True, help_text="Manual date")
     transaction_date = models.DateTimeField(auto_now_add=True)
 

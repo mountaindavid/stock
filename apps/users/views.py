@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import User
 from .serializers import RegisterSerializer, UserSerializer, UpdateUserProfileSerializer, ChangePasswordSerializer
 
@@ -74,3 +75,31 @@ class ChangePasswordView(APIView):
                 'message': 'Password changed successfully'
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TokenVerifyView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        """
+        POST /api/token/verify/ - verify JWT token
+        """
+        try:
+            # The JWTAuthentication will automatically validate the token
+            # If we reach this point, the token is valid
+            user = request.user
+            return Response({
+                'valid': True,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                }
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'valid': False,
+                'error': 'Invalid token'
+            }, status=status.HTTP_401_UNAUTHORIZED)
