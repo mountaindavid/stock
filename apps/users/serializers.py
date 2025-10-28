@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User
 from datetime import datetime
+from django.contrib.auth import authenticate
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -40,6 +41,26 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Date of birth cannot be in the future')
         return value
 
+class LoginSerializer(serializers.Serializer):
+    """Serializer for user login"""
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, attrs):
+        """Validate user credentials"""
+        username = attrs.get('username')
+        password = attrs.get('password')
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if not user:
+                raise serializers.ValidationError('Invalid credentials')
+            if not user.is_active:
+                raise serializers.ValidationError('User account is disabled')
+            attrs['user'] = user
+        else:
+            raise serializers.ValidationError('Must include username and password')
+        
+        return attrs
 
 class RegisterSerializer(serializers.ModelSerializer):
     """Serializer for user registration with password confirmation"""
