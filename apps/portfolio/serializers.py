@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import Portfolio, Transaction
 from apps.stocks.models import Stock
-from apps.stocks.services import YahooFinanceService
 
 class TransactionSerializer(serializers.ModelSerializer):
     """Serializer for Transaction model"""
@@ -34,13 +33,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             self._validated_stock = stock
             return value.upper()
         except Stock.DoesNotExist:
-            service = YahooFinanceService()
-            try:
-                stock = service.create_or_update_stock(value.upper())
-                self._validated_stock = stock
-                return value.upper()
-            except Exception as e:
-                raise serializers.ValidationError(f'Error creating or updating stock: {e}')
+            raise serializers.ValidationError(f'Stock {value.upper()} does not exist. Please create it first.')
     
     def validate_quantity(self, value):
         """Validate quantity is positive"""
@@ -55,21 +48,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         return value
     
     def validate(self, attrs):
-        """Validate transaction and auto-fetch price if needed"""
-        # Auto-fetch price if not provided
-        if not attrs.get('price_per_share'):
-            stock_ticker = attrs.get('stock_ticker')
-            if stock_ticker:
-                service = YahooFinanceService()
-                try:
-                    price = service.get_stock_price(stock_ticker)
-                    if price:
-                        attrs['price_per_share'] = price
-                    else:
-                        raise serializers.ValidationError(f'Could not fetch price for {stock_ticker}')
-                except Exception as e:
-                    raise serializers.ValidationError(f'Error fetching price: {str(e)}')
-        
+        """Validate transaction"""
         # Validate sell transaction
         if attrs['transaction_type'] == 'SELL':
             stock_ticker = attrs['stock_ticker']
@@ -104,8 +83,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     
     def get_current_price(self, obj):
         """Get current stock price"""
-        service = YahooFinanceService()
-        return service.get_stock_price(obj.stock.ticker)
+        return obj.stock.current_price if obj.stock.current_price else obj.price_per_share
     
     def get_current_total(self, obj):
         """Calculate current total value"""
@@ -163,10 +141,9 @@ class PortfolioSerializer(serializers.ModelSerializer):
         total = 0
         for transaction in obj.transactions.all():
             if transaction.transaction_type == 'BUY':
-                service = YahooFinanceService()
-                current_price = service.get_stock_price(transaction.stock.ticker)
-                if current_price:
-                    total += current_price * transaction.quantity
+                # Use current price if available, otherwise use purchase price
+                price = transaction.stock.current_price if transaction.stock.current_price else transaction.price_per_share
+                total += price * transaction.quantity
         return total
 
     def get_total_invested(self, obj):
