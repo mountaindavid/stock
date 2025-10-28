@@ -14,6 +14,7 @@ env = environ.Env(
     DB_PASSWORD=(str, ''),
     DB_HOST=(str, ''),
     DB_PORT=(str, ''),
+    FINNHUB_API_KEY=(str, ''),
 )
 
 # Read .env file
@@ -155,4 +156,6 @@ CACHES = {
         'LOCATION': 'redis://redis:6379/1',
     }
 }
-STOCK_PRICE_CACHE_TIMEOUT = 1200  # 20 minutes
+STOCK_PRICE_CACHE_TIMEOUT = 86400  # 24 hours (1 day)
+
+FINNHUB_API_KEY = env('FINNHUB_API_KEY')

@@ -13,7 +13,32 @@ class Portfolio(models.Model):
 
     def __str__(self):
         return self.name
-
+    def get_average_purchase_price(self, ticker):
+        """Get average purchase price for a specific ticker in this portfolio"""
+        try:
+            stock = Stock.objects.get(ticker=ticker)
+        except Stock.DoesNotExist:
+            return 0
+        
+        
+        buy_transactions = Transaction.objects.filter(
+            portfolio=self,
+            stock=stock,
+            transaction_type='BUY'
+        )
+        
+        if not buy_transactions.exists():
+            return 0
+        
+        total_cost = sum(t.price_per_share * t.quantity for t in buy_transactions)
+        
+        total_quantity = sum(t.quantity for t in buy_transactions)
+        
+        if total_quantity == 0:
+            return 0
+            
+        return total_cost / total_quantity
+        
     def get_owned_shares(self, ticker):
         """Get total owned shares for a specific ticker in this portfolio"""
         try:

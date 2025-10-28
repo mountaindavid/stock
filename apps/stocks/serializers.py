@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import Stock, PriceHistory
-from datetime import datetime
+from .models import Stock
 
 
 class StockSerializer(serializers.ModelSerializer):
@@ -28,48 +27,4 @@ class StockSerializer(serializers.ModelSerializer):
         return value
 
 
-class PriceHistorySerializer(serializers.ModelSerializer):
-    """Serializer for PriceHistory model"""
-    
-    class Meta:
-        model = PriceHistory
-        fields = [
-            'id', 'stock', 'price', 'date', 'created_at'
-        ]
-        read_only_fields = ['id', 'created_at']
-    
-    def validate_price(self, value):
-        """Validate price is positive"""
-        if value <= 0:
-            raise serializers.ValidationError('Price must be positive')
-        return value
-    
-    def validate_date(self, value):
-        """Validate date is not in the future"""
-        if value > datetime.now().date():
-            raise serializers.ValidationError('Date cannot be in the future')
-        return value
-    
-    def validate(self, attrs):
-        """Validate unique stock-date combination"""
-        stock = attrs.get('stock')
-        date = attrs.get('date')
-        
-        if stock and date:
-            # Check for existing price history for this stock on this date
-            existing = PriceHistory.objects.filter(
-                stock=stock, 
-                date=date
-            )
-            
-            # Exclude current instance if updating
-            if self.instance:
-                existing = existing.exclude(id=self.instance.id)
-            
-            if existing.exists():
-                raise serializers.ValidationError(
-                    f'Price history already exists for {stock.ticker} on {date}'
-                )
-        
-        return attrs
 
