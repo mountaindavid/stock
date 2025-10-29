@@ -7,8 +7,8 @@ from django.db import IntegrityError
 from django.db.models import Sum, Avg, Case, When, DecimalField
 from decimal import Decimal
 from .models import Portfolio, Transaction
-from .serializers import PortfolioSerializer, TransactionSerializer, FIFOResultSerializer, PortfolioStockSerializer
-from .services import calculate_fifo
+from .serializers import PortfolioSerializer, TransactionSerializer, FIFOResultSerializer
+from .services import FIFOCalculator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,8 @@ class PortfolioFIFOView(generics.GenericAPIView):
                     status=status.HTTP_200_OK
                 )
             
-            fifo_result = calculate_fifo(transactions)
+            calculator = FIFOCalculator()
+            fifo_result = calculator.calculate_fifo(transactions)
             serializer = FIFOResultSerializer(fifo_result)
             
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -101,129 +102,6 @@ class PortfolioFIFOView(generics.GenericAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-class PortfolioStocksView(generics.GenericAPIView):
-    """Get all stocks in user's portfolios with calculated holdings"""
-    permission_classes = [IsAuthenticated]
-    serializer_class = PortfolioStockSerializer
-
-    def get(self, request):
-        """Get stocks with quantity, total_price, and average_price_per_share"""
-        try:
-            # Get all portfolios for the user
-            portfolios = Portfolio.objects.filter(user=request.user)
-            if not portfolios.exists():
-                return Response([], status=status.HTTP_200_OK)
-            
-            # Get all transactions for user's portfolios
-            transactions = Transaction.objects.filter(portfolio__in=portfolios)
-            
-            # Calculate holdings by ticker using FIFO logic
-            holdings = {}
-            
-            # Group transactions by ticker and sort by date
-            ticker_transactions = {}
-            for transaction in transactions.order_by('date'):
-                ticker = transaction.ticker
-                if ticker not in ticker_transactions:
-                    ticker_transactions[ticker] = []
-                ticker_transactions[ticker].append(transaction)
-            
-            # Process each ticker's transactions
-            for ticker, ticker_txns in ticker_transactions.items():
-                # FIFO queue: list of (quantity, price) tuples
-                fifo_queue = []
-                current_quantity = Decimal('0')
-                total_cost = Decimal('0')
-                last_updated = None
-                
-                for transaction in ticker_txns:
-                    if transaction.transaction_type == 'BUY':
-                        # Add to FIFO queue
-                        fifo_queue.append((transaction.quantity, transaction.price or Decimal('0')))
-                        current_quantity += transaction.quantity
-                        total_cost += transaction.quantity * (transaction.price or Decimal('0'))
-                    else:  # SELL
-                        sell_quantity = transaction.quantity
-                        
-                        # Validate that we have enough shares to sell
-                        if sell_quantity > current_quantity:
-                            logger.warning(f"Attempting to sell {sell_quantity} shares of {ticker} but only have {current_quantity}")
-                            continue  # Skip this transaction
-                        
-                        # Process sell using FIFO
-                        remaining_to_sell = sell_quantity
-                        while remaining_to_sell > 0 and fifo_queue:
-                            available_qty, buy_price = fifo_queue[0]
-                            
-                            if available_qty <= remaining_to_sell:
-                                # Sell all shares from this buy
-                                remaining_to_sell -= available_qty
-                                total_cost -= available_qty * buy_price
-                                current_quantity -= available_qty
-                                fifo_queue.pop(0)
-                            else:
-                                # Sell partial shares from this buy
-                                total_cost -= remaining_to_sell * buy_price
-                                current_quantity -= remaining_to_sell
-                                fifo_queue[0] = (available_qty - remaining_to_sell, buy_price)
-                                remaining_to_sell = 0
-                    
-                    last_updated = transaction.date
-                
-                # Store the result
-                if current_quantity > 0:
-                    holdings[ticker] = {
-                        'quantity': current_quantity,
-                        'total_cost': total_cost,
-                        'stock': ticker_txns[0].stock,
-                        'last_updated': last_updated
-                    }
-            
-            # Prepare response data
-            portfolio_stocks = []
-            for ticker, holding in holdings.items():
-                stock = holding['stock']
-                quantity = holding['quantity']
-                total_cost = holding['total_cost']
-                current_price = stock.current_price if stock else None
-                
-                # Calculate total_price (quantity * current_price)
-                total_price = quantity * current_price if current_price else None
-                
-                # Calculate average_price_per_share (total_cost / quantity)
-                average_price_per_share = total_cost / quantity if quantity > 0 else None
-                
-                # Round prices to 2 decimal places
-                if current_price:
-                    current_price = current_price.quantize(Decimal('0.01'))
-                if total_price:
-                    total_price = total_price.quantize(Decimal('0.01'))
-                if average_price_per_share:
-                    average_price_per_share = average_price_per_share.quantize(Decimal('0.01'))
-                
-                portfolio_stocks.append({
-                    'id': stock.id if stock else None,
-                    'ticker': ticker,
-                    'name': stock.name if stock else ticker,
-                    'quantity': int(quantity),  # Convert to whole number
-                    'current_price': current_price,
-                    'total_price': total_price,
-                    'average_price_per_share': average_price_per_share,
-                    'last_updated': holding['last_updated']
-                })
-            
-            # Sort by ticker
-            portfolio_stocks.sort(key=lambda x: x['ticker'])
-            
-            serializer = PortfolioStockSerializer(portfolio_stocks, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f"Error fetching portfolio stocks: {str(e)}")
-            return Response(
-                {'error': 'Failed to fetch portfolio stocks. Please try again later.'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
 class PortfolioStockDetailView(generics.GenericAPIView):
     """Get specific stock information from a specific portfolio"""
@@ -251,49 +129,18 @@ class PortfolioStockDetailView(generics.GenericAPIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # Calculate holdings using FIFO logic for this specific portfolio
-            fifo_queue = []
-            current_quantity = Decimal('0')
-            total_cost = Decimal('0')
-            last_updated = None
+            # Use FIFOCalculator to get holdings for this specific portfolio
+            calculator = FIFOCalculator()
+            holdings = calculator.calculate_holdings(transactions)
             
-            for transaction in transactions:
-                if transaction.transaction_type == 'BUY':
-                    # Add to FIFO queue
-                    fifo_queue.append((transaction.quantity, transaction.price or Decimal('0')))
-                    current_quantity += transaction.quantity
-                    total_cost += transaction.quantity * (transaction.price or Decimal('0'))
-                else:  # SELL
-                    sell_quantity = transaction.quantity
-                    
-                    # Validate that we have enough shares to sell
-                    if sell_quantity > current_quantity:
-                        logger.warning(f"Attempting to sell {sell_quantity} shares of {stock.ticker} but only have {current_quantity}")
-                        continue  # Skip this transaction
-                    
-                    # Process sell using FIFO
-                    remaining_to_sell = sell_quantity
-                    while remaining_to_sell > 0 and fifo_queue:
-                        available_qty, buy_price = fifo_queue[0]
-                        
-                        if available_qty <= remaining_to_sell:
-                            # Sell all shares from this buy
-                            remaining_to_sell -= available_qty
-                            total_cost -= available_qty * buy_price
-                            current_quantity -= available_qty
-                            fifo_queue.pop(0)
-                        else:
-                            # Sell partial shares from this buy
-                            total_cost -= remaining_to_sell * buy_price
-                            current_quantity -= remaining_to_sell
-                            fifo_queue[0] = (available_qty - remaining_to_sell, buy_price)
-                            remaining_to_sell = 0
-                
-                last_updated = transaction.date
+            # Get holding data for this ticker
+            holding = holdings.get(stock.ticker, {})
+            current_quantity = holding.get('quantity', Decimal('0'))
+            average_price_per_share = holding.get('average_price_per_share')
+            last_updated = holding.get('last_updated')
             
             # Calculate values
             market_price = stock.current_price
-            average_price_per_share = total_cost / current_quantity if current_quantity > 0 else None
             total_price = current_quantity * average_price_per_share if average_price_per_share else None
             
             # Round prices to 2 decimal places
@@ -310,10 +157,10 @@ class PortfolioStockDetailView(generics.GenericAPIView):
                 'name': stock.name,
                 'portfolio_id': portfolio.id,
                 'portfolio_name': portfolio.name,
-                'current_price': market_price,  # Текущая рыночная цена
-                'quantity': str(int(current_quantity)),  # Количество в портфеле
-                'total_price': total_price,  # Количество * средняя цена покупки
-                'average_price_per_share': average_price_per_share,  # Средняя цена покупки
+                'current_price': market_price,  # Current market price
+                'quantity': str(int(current_quantity)),  # Quantity in portfolio
+                'total_price': total_price,  # Quantity * average purchase price
+                'average_price_per_share': average_price_per_share,  # Average purchase price
                 'last_updated': last_updated or stock.last_updated
             }, status=status.HTTP_200_OK)
             

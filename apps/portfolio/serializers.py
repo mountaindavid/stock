@@ -35,7 +35,9 @@ class TransactionSerializer(serializers.ModelSerializer):
             sell_quantity = attrs.get('quantity')
             
             if portfolio and ticker and sell_quantity:
-                current_quantity = self._calculate_current_holdings(portfolio, ticker)
+                from .services import FIFOCalculator
+                calculator = FIFOCalculator()
+                current_quantity = calculator.get_current_holdings(portfolio, ticker)
                 
                 if sell_quantity > current_quantity:
                     raise serializers.ValidationError({
@@ -45,7 +47,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        # Если цена не указана, получаем текущую цену автоматически
+        # If price is not specified, automatically get current price
         if 'price' not in validated_data or validated_data['price'] is None:
             ticker = validated_data['ticker']
             validated_data['price'] = self._get_current_price(ticker)
@@ -56,44 +58,21 @@ class TransactionSerializer(serializers.ModelSerializer):
             ticker=ticker,
             defaults={'name': ticker}  # Default name, can be updated later
         )
+        
+        # Update current_price if it's not set or if we have a new price
+        if not stock.current_price or created:
+            try:
+                current_price = self._get_current_price(ticker)
+                stock.current_price = current_price
+                stock.save(update_fields=['current_price'])
+            except Exception:
+                # If price fetch fails, continue without updating
+                pass
+        
         validated_data['stock'] = stock
         
         return super().create(validated_data)
     
-    def _calculate_current_holdings(self, portfolio, ticker):
-        """Calculate current holdings for a ticker using FIFO logic"""
-        from decimal import Decimal
-        
-        transactions = Transaction.objects.filter(
-            portfolio=portfolio,
-            ticker=ticker
-        ).order_by('date')
-        
-        fifo_queue = []
-        current_quantity = Decimal('0')
-        
-        for transaction in transactions:
-            if transaction.transaction_type == 'BUY':
-                fifo_queue.append((transaction.quantity, transaction.price or Decimal('0')))
-                current_quantity += transaction.quantity
-            else:  # SELL
-                sell_quantity = transaction.quantity
-                
-                # Process sell using FIFO
-                remaining_to_sell = sell_quantity
-                while remaining_to_sell > 0 and fifo_queue:
-                    available_qty, buy_price = fifo_queue[0]
-                    
-                    if available_qty <= remaining_to_sell:
-                        remaining_to_sell -= available_qty
-                        current_quantity -= available_qty
-                        fifo_queue.pop(0)
-                    else:
-                        current_quantity -= remaining_to_sell
-                        fifo_queue[0] = (available_qty - remaining_to_sell, buy_price)
-                        remaining_to_sell = 0
-        
-        return current_quantity
 
     def _get_current_price(self, ticker):
         """Get current price from cache or Finnhub service"""
@@ -152,6 +131,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
     def get_total_value(self, obj):
         """Calculate total portfolio value using current market prices"""
         from decimal import Decimal
+        from .services import FIFOCalculator
         
         # Get all transactions for this portfolio
         transactions = Transaction.objects.filter(portfolio=obj)
@@ -159,51 +139,21 @@ class PortfolioSerializer(serializers.ModelSerializer):
         if not transactions.exists():
             return Decimal('0.00')
         
-        # Calculate holdings by ticker using FIFO logic
-        holdings = {}
-        
-        # Group transactions by ticker and sort by date
-        ticker_transactions = {}
-        for transaction in transactions.order_by('date'):
-            ticker = transaction.ticker
-            if ticker not in ticker_transactions:
-                ticker_transactions[ticker] = []
-            ticker_transactions[ticker].append(transaction)
+        # Use FIFOCalculator to get holdings
+        calculator = FIFOCalculator()
+        holdings = calculator.calculate_holdings(transactions)
         
         total_value = Decimal('0')
         
-        # Process each ticker's transactions
-        for ticker, ticker_txns in ticker_transactions.items():
-            # FIFO queue: list of (quantity, price) tuples
-            fifo_queue = []
-            current_quantity = Decimal('0')
+        # Calculate current market value for each holding
+        for ticker, holding in holdings.items():
+            quantity = holding['quantity']
+            stock = holding['stock']
             
-            for transaction in ticker_txns:
-                if transaction.transaction_type == 'BUY':
-                    # Add to FIFO queue
-                    fifo_queue.append((transaction.quantity, transaction.price or Decimal('0')))
-                    current_quantity += transaction.quantity
-                else:  # SELL
-                    sell_quantity = transaction.quantity
-                    
-                    # Process sell using FIFO
-                    remaining_to_sell = sell_quantity
-                    while remaining_to_sell > 0 and fifo_queue:
-                        available_qty, buy_price = fifo_queue[0]
-                        
-                        if available_qty <= remaining_to_sell:
-                            remaining_to_sell -= available_qty
-                            current_quantity -= available_qty
-                            fifo_queue.pop(0)
-                        else:
-                            current_quantity -= remaining_to_sell
-                            fifo_queue[0] = (available_qty - remaining_to_sell, buy_price)
-                            remaining_to_sell = 0
-            
-            # Calculate current value for this ticker
-            if current_quantity > 0 and ticker_txns[0].stock and ticker_txns[0].stock.current_price:
-                current_price = ticker_txns[0].stock.current_price
-                total_value += current_quantity * current_price
+            if quantity > 0 and stock and stock.current_price:
+                # Use only current market price for total_value calculation
+                current_price = stock.current_price
+                total_value += quantity * current_price
         
         # Round to 2 decimal places
         return total_value.quantize(Decimal('0.01'))
