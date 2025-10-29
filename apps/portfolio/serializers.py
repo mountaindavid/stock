@@ -1,284 +1,218 @@
 from rest_framework import serializers
 from .models import Portfolio, Transaction
 from apps.stocks.models import Stock
+from decimal import Decimal
 
 class TransactionSerializer(serializers.ModelSerializer):
-    """Serializer for Transaction model"""
+    total_price = serializers.SerializerMethodField()
     
-    stock_ticker = serializers.CharField(write_only=True)
-    ticker = serializers.CharField(source='stock.ticker', read_only=True) 
-    company_name = serializers.CharField(source='stock.name', read_only=True)
-    date = serializers.DateField(required=False, allow_null=True)
-
-    # Calculated fields
-    purchase_total = serializers.SerializerMethodField()
-    current_market_price = serializers.SerializerMethodField()
-    current_total = serializers.SerializerMethodField()
-    profit_loss_by_transaction = serializers.SerializerMethodField()
-    profit_loss_by_average = serializers.SerializerMethodField()
-    average_purchase_price = serializers.SerializerMethodField()
-    profit_loss_percentage_by_transaction = serializers.SerializerMethodField()
-    profit_loss_percentage_by_average = serializers.SerializerMethodField()
-
     class Meta:
         model = Transaction
         fields = [
-            'id', 'stock', 'stock_ticker', 'ticker', 'company_name', 'portfolio',
-            'transaction_type', 'quantity', 'price_per_share', 'date', 'transaction_date',
-            'purchase_total', 'current_market_price', 'current_total', 
-            'profit_loss_by_transaction', 'profit_loss_by_average', 'average_purchase_price',
-            'profit_loss_percentage_by_transaction', 'profit_loss_percentage_by_average'
+            'id', 'stock', 'ticker', 'quantity', 'price', 'total_price', 'date', 'transaction_type'
         ]
-        read_only_fields = ['id', 'portfolio', 'transaction_date', 'stock']
-    
-    def validate_stock_ticker(self, value):
-        """Validate stock ticker exists"""
-        try:
-            stock = Stock.objects.get(ticker=value.upper())
-            self._validated_stock = stock
-            return value.upper()
-        except Stock.DoesNotExist:
-            raise serializers.ValidationError(f'Stock {value.upper()} does not exist. Please create it first.')
-    
+        read_only_fields = ['id', 'total_price']
+
+    def validate_ticker(self, value):
+        return value.upper().strip()
+
     def validate_quantity(self, value):
-        """Validate quantity is positive"""
         if value <= 0:
             raise serializers.ValidationError('Quantity must be positive')
         return value
-    
-    def validate_price_per_share(self, value):
-        """Validate price is positive"""
-        if value <= 0:
+
+    def validate_price(self, value):
+        if value is not None and value <= 0:
             raise serializers.ValidationError('Price must be positive')
         return value
-    
+
     def validate(self, attrs):
-        """Validate transaction"""
-        # Validate sell transaction
-        if attrs['transaction_type'] == 'SELL':
-            stock_ticker = attrs['stock_ticker']
+        """Validate transaction data including SELL quantity validation"""
+        if attrs.get('transaction_type') == 'SELL':
+            # We need portfolio context for validation
             portfolio = self.context.get('portfolio')
-            if portfolio:
-                if attrs['quantity'] > portfolio.get_owned_shares(stock_ticker):
-                    raise serializers.ValidationError('You do not have enough shares to sell')
+            ticker = attrs.get('ticker')
+            sell_quantity = attrs.get('quantity')
+            
+            if portfolio and ticker and sell_quantity:
+                current_quantity = self._calculate_current_holdings(portfolio, ticker)
+                
+                if sell_quantity > current_quantity:
+                    raise serializers.ValidationError({
+                        'quantity': f'Insufficient shares. Trying to sell {sell_quantity} shares of {ticker}, but only have {current_quantity} shares available.'
+                    })
         
         return attrs
-    
+
     def create(self, validated_data):
-        """Create transaction with proper stock and portfolio"""
-        validated_data.pop('stock_ticker')  
-        stock = getattr(self, '_validated_stock', None)  
+        # Если цена не указана, получаем текущую цену автоматически
+        if 'price' not in validated_data or validated_data['price'] is None:
+            ticker = validated_data['ticker']
+            validated_data['price'] = self._get_current_price(ticker)
         
-        if not stock:
-            raise serializers.ValidationError('Stock validation failed')
-        
-        # Get portfolio from context
-        portfolio = self.context.get('portfolio')
-        if not portfolio:
-            raise serializers.ValidationError('Portfolio must be provided in context')
-        
+        # Get or create Stock object
+        ticker = validated_data['ticker']
+        stock, created = Stock.objects.get_or_create(
+            ticker=ticker,
+            defaults={'name': ticker}  # Default name, can be updated later
+        )
         validated_data['stock'] = stock
-        validated_data['portfolio'] = portfolio
         
         return super().create(validated_data)
-
-    def get_purchase_total(self, obj):
-        """Calculate total purchase amount for this transaction"""
-        return obj.quantity * obj.price_per_share
     
-    def get_current_market_price(self, obj):
-        """Get current market price from cache or API"""
+    def _calculate_current_holdings(self, portfolio, ticker):
+        """Calculate current holdings for a ticker using FIFO logic"""
+        from decimal import Decimal
+        
+        transactions = Transaction.objects.filter(
+            portfolio=portfolio,
+            ticker=ticker
+        ).order_by('date')
+        
+        fifo_queue = []
+        current_quantity = Decimal('0')
+        
+        for transaction in transactions:
+            if transaction.transaction_type == 'BUY':
+                fifo_queue.append((transaction.quantity, transaction.price or Decimal('0')))
+                current_quantity += transaction.quantity
+            else:  # SELL
+                sell_quantity = transaction.quantity
+                
+                # Process sell using FIFO
+                remaining_to_sell = sell_quantity
+                while remaining_to_sell > 0 and fifo_queue:
+                    available_qty, buy_price = fifo_queue[0]
+                    
+                    if available_qty <= remaining_to_sell:
+                        remaining_to_sell -= available_qty
+                        current_quantity -= available_qty
+                        fifo_queue.pop(0)
+                    else:
+                        current_quantity -= remaining_to_sell
+                        fifo_queue[0] = (available_qty - remaining_to_sell, buy_price)
+                        remaining_to_sell = 0
+        
+        return current_quantity
+
+    def _get_current_price(self, ticker):
+        """Get current price from cache or Finnhub service"""
         from django.core.cache import cache
         from apps.stocks.services import FinnhubService
         
-        # Попробовать получить из кеша
-        cache_key = f"stock_price_{obj.stock.ticker}"
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return cached_data['price']
-        
-        # Если нет в кеше, попробовать получить через API
-        try:
-            service = FinnhubService()
-            price_data = service.get_stock_price(obj.stock.ticker)
-            return price_data['price']
-        except:
-            # Fallback на цену покупки только при ошибке API
-            return obj.price_per_share
-    
-    def get_current_total(self, obj):
-        """Calculate current total value using market price"""
-        return obj.quantity * self.get_current_market_price(obj)
-    
-    def get_average_purchase_price(self, obj):
-        """Get average purchase price for this ticker in portfolio"""
-        return obj.portfolio.get_average_purchase_price(obj.stock.ticker)
-    
-    def get_profit_loss_by_transaction(self, obj):
-        """Calculate profit/loss based on this transaction's purchase price"""
-        current_price = self.get_current_market_price(obj)
-        return (current_price - obj.price_per_share) * obj.quantity
-    
-    def get_profit_loss_by_average(self, obj):
-        """Calculate profit/loss based on average purchase price"""
-        current_price = self.get_current_market_price(obj)
-        average_price = self.get_average_purchase_price(obj)
-        owned_shares = obj.portfolio.get_owned_shares(obj.stock.ticker)
-        return (current_price - average_price) * owned_shares
-    
-    def get_profit_loss_percentage_by_transaction(self, obj):
-        """Calculate profit/loss percentage based on transaction price"""
-        purchase_total = self.get_purchase_total(obj)
-        if purchase_total == 0:
-            return 0
-        return (self.get_profit_loss_by_transaction(obj) / purchase_total) * 100
-    
-    def get_profit_loss_percentage_by_average(self, obj):
-        """Calculate profit/loss percentage based on average price"""
-        average_price = self.get_average_purchase_price(obj)
-        if average_price == 0:
-            return 0
-        owned_shares = obj.portfolio.get_owned_shares(obj.stock.ticker)
-        if owned_shares == 0:
-            return 0
-        average_total = average_price * owned_shares
-        return (self.get_profit_loss_by_average(obj) / average_total) * 100
-
-class PortfolioSerializer(serializers.ModelSerializer):
-    """Serializer for Portfolio model"""
-    transactions = TransactionSerializer(many=True, read_only=True)
-
-    # Calculated fields
-    total_value = serializers.SerializerMethodField()
-    total_invested = serializers.SerializerMethodField()
-    total_profit_loss = serializers.SerializerMethodField()
-    total_profit_loss_by_average = serializers.SerializerMethodField()
-    total_profit_loss_percentage = serializers.SerializerMethodField()
-    total_profit_loss_percentage_by_average = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Portfolio
-        fields = [
-            'id', 'user', 'name', 'description', 
-            'created_at', 'updated_at',
-            'transactions', 'total_value', 'total_invested', 'total_profit_loss',
-            'total_profit_loss_by_average', 'total_profit_loss_percentage', 
-            'total_profit_loss_percentage_by_average'
-        ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
-
-    def validate_name(self, value):
-        """Validate portfolio name uniqueness per user"""
-        user = self.context['request'].user
-        if self.instance:
-            # For updates, exclude current instance
-            if Portfolio.objects.filter(user=user, name=value).exclude(id=self.instance.id).exists():
-                raise serializers.ValidationError('Portfolio with this name already exists')
-        else:
-            # For creation
-            if Portfolio.objects.filter(user=user, name=value).exists():
-                raise serializers.ValidationError('Portfolio with this name already exists')
-        return value
-    
-    def create(self, validated_data):
-        """Create portfolio with current user"""
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
-
-    def get_current_market_price(self, ticker):
-        """Get current market price from cache or API"""
-        from django.core.cache import cache
-        from apps.stocks.services import FinnhubService
-        
-        # Попробовать получить из кеша
+        # Try cache first
         cache_key = f"stock_price_{ticker}"
         cached_data = cache.get(cache_key)
         if cached_data:
-            return cached_data['price']
+            return Decimal(str(cached_data['price']))
         
-        # Если нет в кеше, попробовать получить через API
+        # Fallback to API
         try:
             service = FinnhubService()
             price_data = service.get_stock_price(ticker)
-            return price_data['price']
-        except:
-            return 0
+            return Decimal(str(price_data['price']))
+        except Exception:
+            raise serializers.ValidationError(f'Unable to fetch current price for {ticker}')
+    
+    def get_total_price(self, obj):
+        """Calculate total price as quantity * price"""
+        if obj.price is not None:
+            return (obj.quantity * obj.price).quantize(Decimal('0.01'))
+        return None
+
+class FIFOPositionSerializer(serializers.Serializer):
+    ticker = serializers.CharField()
+    remaining_qty = serializers.DecimalField(max_digits=15, decimal_places=0)
+    buy_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+class FIFOResultSerializer(serializers.Serializer):
+    total_profit = serializers.DecimalField(max_digits=15, decimal_places=2)
+    positions = FIFOPositionSerializer(many=True)
+
+
+class PortfolioStockSerializer(serializers.Serializer):
+    """Serializer for stocks in a portfolio with calculated holdings"""
+    id = serializers.IntegerField()
+    ticker = serializers.CharField()
+    name = serializers.CharField()
+    quantity = serializers.DecimalField(max_digits=15, decimal_places=0)
+    current_price = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    total_price = serializers.DecimalField(max_digits=15, decimal_places=2, allow_null=True)
+    average_price_per_share = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    last_updated = serializers.DateTimeField()
+
+class PortfolioSerializer(serializers.ModelSerializer):
+    total_value = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Portfolio
+        fields = ['id', 'user', 'name', 'description', 'created_at', 'updated_at', 'total_value']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'total_value']
 
     def get_total_value(self, obj):
-        """Calculate total current value of portfolio using market prices"""
-        total = 0
-        # Группируем транзакции по тикеру для эффективности
-        ticker_quantities = {}
+        """Calculate total portfolio value using current market prices"""
+        from decimal import Decimal
         
-        for transaction in obj.transactions.all():
-            if transaction.transaction_type == 'BUY':
-                ticker = transaction.stock.ticker
-                if ticker not in ticker_quantities:
-                    ticker_quantities[ticker] = 0
-                ticker_quantities[ticker] += transaction.quantity
-            elif transaction.transaction_type == 'SELL':
-                ticker = transaction.stock.ticker
-                if ticker not in ticker_quantities:
-                    ticker_quantities[ticker] = 0
-                ticker_quantities[ticker] -= transaction.quantity
+        # Get all transactions for this portfolio
+        transactions = Transaction.objects.filter(portfolio=obj)
         
-        # Рассчитываем стоимость по текущим рыночным ценам
-        for ticker, quantity in ticker_quantities.items():
-            if quantity > 0:  # Только если у нас есть акции
-                current_price = self.get_current_market_price(ticker)
-                total += current_price * quantity
-                
-        return total
+        if not transactions.exists():
+            return Decimal('0.00')
+        
+        # Calculate holdings by ticker using FIFO logic
+        holdings = {}
+        
+        # Group transactions by ticker and sort by date
+        ticker_transactions = {}
+        for transaction in transactions.order_by('date'):
+            ticker = transaction.ticker
+            if ticker not in ticker_transactions:
+                ticker_transactions[ticker] = []
+            ticker_transactions[ticker].append(transaction)
+        
+        total_value = Decimal('0')
+        
+        # Process each ticker's transactions
+        for ticker, ticker_txns in ticker_transactions.items():
+            # FIFO queue: list of (quantity, price) tuples
+            fifo_queue = []
+            current_quantity = Decimal('0')
+            
+            for transaction in ticker_txns:
+                if transaction.transaction_type == 'BUY':
+                    # Add to FIFO queue
+                    fifo_queue.append((transaction.quantity, transaction.price or Decimal('0')))
+                    current_quantity += transaction.quantity
+                else:  # SELL
+                    sell_quantity = transaction.quantity
+                    
+                    # Process sell using FIFO
+                    remaining_to_sell = sell_quantity
+                    while remaining_to_sell > 0 and fifo_queue:
+                        available_qty, buy_price = fifo_queue[0]
+                        
+                        if available_qty <= remaining_to_sell:
+                            remaining_to_sell -= available_qty
+                            current_quantity -= available_qty
+                            fifo_queue.pop(0)
+                        else:
+                            current_quantity -= remaining_to_sell
+                            fifo_queue[0] = (available_qty - remaining_to_sell, buy_price)
+                            remaining_to_sell = 0
+            
+            # Calculate current value for this ticker
+            if current_quantity > 0 and ticker_txns[0].stock and ticker_txns[0].stock.current_price:
+                current_price = ticker_txns[0].stock.current_price
+                total_value += current_quantity * current_price
+        
+        # Round to 2 decimal places
+        return total_value.quantize(Decimal('0.01'))
 
-    def get_total_invested(self, obj):
-        """Calculate total amount invested (only BUY transactions)"""
-        total = 0
-        for transaction in obj.transactions.all():
-            if transaction.transaction_type == 'BUY':
-                total += transaction.price_per_share * transaction.quantity
-        return total
-
-    def get_total_profit_loss(self, obj):
-        """Calculate total profit/loss using individual transaction prices"""
-        return self.get_total_value(obj) - self.get_total_invested(obj)
-    
-    def get_total_profit_loss_by_average(self, obj):
-        """Calculate total profit/loss using average purchase prices"""
-        total_profit_loss = 0
-        
-        # Группируем транзакции по тикеру
-        ticker_quantities = {}
-        for transaction in obj.transactions.all():
-            if transaction.transaction_type == 'BUY':
-                ticker = transaction.stock.ticker
-                if ticker not in ticker_quantities:
-                    ticker_quantities[ticker] = 0
-                ticker_quantities[ticker] += transaction.quantity
-            elif transaction.transaction_type == 'SELL':
-                ticker = transaction.stock.ticker
-                if ticker not in ticker_quantities:
-                    ticker_quantities[ticker] = 0
-                ticker_quantities[ticker] -= transaction.quantity
-        
-        # Рассчитываем прибыль/убыток по средней цене
-        for ticker, quantity in ticker_quantities.items():
-            if quantity > 0:  # Только если у нас есть акции
-                current_price = self.get_current_market_price(ticker)
-                average_price = obj.get_average_purchase_price(ticker)
-                total_profit_loss += (current_price - average_price) * quantity
-                
-        return total_profit_loss
-    
-    def get_total_profit_loss_percentage(self, obj):
-        """Calculate total profit/loss percentage using individual transaction prices"""
-        total_invested = self.get_total_invested(obj)
-        if total_invested == 0:
-            return 0
-        return (self.get_total_profit_loss(obj) / total_invested) * 100
-    
-    def get_total_profit_loss_percentage_by_average(self, obj):
-        """Calculate total profit/loss percentage using average purchase prices"""
-        total_invested = self.get_total_invested(obj)
-        if total_invested == 0:
-            return 0
-        return (self.get_total_profit_loss_by_average(obj) / total_invested) * 100
+    def validate_name(self, value):
+        user = self.context['request'].user
+        queryset = Portfolio.objects.filter(user=user, name=value)
+        if self.instance:
+            queryset = queryset.exclude(id=self.instance.id)
+        if queryset.exists():
+            raise serializers.ValidationError('Portfolio with this name already exists')
+        return value

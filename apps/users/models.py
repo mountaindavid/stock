@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True)
-    date_of_birth = models.DateField(blank=True, null=True)
+    email = models.EmailField(unique=True, db_index=True)
+    date_of_birth = models.DateField(blank=True, null=True, db_index=True)
     
     def __str__(self):
         return self.username

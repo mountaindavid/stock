@@ -1,0 +1,1016 @@
+{
+	"info": {
+		"_postman_id": "stock-portfolio-api",
+		"name": "Stock Portfolio API",
+		"description": "Complete API collection for Stock Portfolio Management System with FIFO calculations and real-time stock prices",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\",\n    \"date_of_birth\": \"1990-01-01\",\n    \"password\": \"testpass123\",\n    \"password_confirmation\": \"testpass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/register/",
+							"host": ["{{base_url}}"],
+							"path": ["users", "register", ""]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.access);",
+									"    pm.environment.set('refresh_token', response.refresh);",
+									"    pm.environment.set('user_id', response.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"password\": \"testpass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/login/",
+							"host": ["{{base_url}}"],
+							"path": ["users", "login", ""]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.access);",
+									"    pm.environment.set('refresh_token', response.refresh);",
+									"    pm.environment.set('user_id', response.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/token/refresh/",
+							"host": ["{{base_url}}"],
+							"path": ["token", "refresh", ""]
+						}
+					}
+				},
+				{
+					"name": "Verify Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"{{access_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/token/verify/",
+							"host": ["{{base_url}}"],
+							"path": ["token", "verify", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/profile/",
+							"host": ["{{base_url}}"],
+							"path": ["users", "profile", ""]
+						}
+					}
+				},
+				{
+					"name": "Update Profile (PUT)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"first_name\": \"Updated\",\n    \"last_name\": \"Name\",\n    \"date_of_birth\": \"1990-01-01\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/profile/",
+							"host": ["{{base_url}}"],
+							"path": ["users", "profile", ""]
+						}
+					}
+				},
+				{
+					"name": "Update Profile (PATCH)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"first_name\": \"New Name\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/profile/",
+							"host": ["{{base_url}}"],
+							"path": ["users", "profile", ""]
+						}
+					}
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"old_password\": \"testpass123\",\n    \"new_password\": \"newpass123\",\n    \"new_password_confirmation\": \"newpass123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/change-password/",
+							"host": ["{{base_url}}"],
+							"path": ["users", "change-password", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Portfolios",
+			"item": [
+				{
+					"name": "Get Portfolios",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", ""]
+						}
+					}
+				},
+				{
+					"name": "Create Portfolio",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"My Investment Portfolio\",\n    \"description\": \"Основной инвестиционный портфель\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/portfolios/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", ""]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('portfolio_id', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Portfolio Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", ""]
+						}
+					}
+				},
+				{
+					"name": "Update Portfolio",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Portfolio Name\",\n    \"description\": \"Обновленное описание портфеля\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", ""]
+						}
+					}
+				},
+				{
+					"name": "Delete Portfolio",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", ""]
+						}
+					}
+				},
+				{
+					"name": "Get FIFO Calculation",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/fifo/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "fifo", ""]
+						}
+					}
+				},
+				{
+					"name": "Get Portfolio Stocks",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/stocks/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "stocks", ""]
+						}
+					}
+				},
+				{
+					"name": "Get Portfolio Stock Detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/stocks/{{stock_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "stocks", "{{stock_id}}", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Transactions",
+			"item": [
+				{
+					"name": "Get Transactions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+						}
+					},
+					"response": [
+						{
+							"name": "Transaction List Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "[\n    {\n        \"id\": 36,\n        \"stock\": 1,\n        \"ticker\": \"AAPL\",\n        \"quantity\": \"100\",\n        \"price\": \"50.00\",\n        \"total_price\": \"5000.00\",\n        \"date\": \"2024-10-01T10:00:00Z\",\n        \"transaction_type\": \"BUY\"\n    }\n]"
+						}
+					]
+				},
+				{
+					"name": "Create Buy Transaction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 100,\n    \"price\": 50.00,\n    \"date\": \"2024-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('transaction_id', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Create Sell Transaction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 80,\n    \"price\": 60.00,\n    \"date\": \"2024-10-10T10:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+						}
+					}
+				},
+				{
+					"name": "Create Transaction with Auto Price",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ticker\": \"MSFT\",\n    \"quantity\": 25,\n    \"date\": \"2024-10-20T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+						}
+					}
+				},
+				{
+					"name": "Get Transaction Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "transactions", "{{transaction_id}}", ""]
+						}
+					},
+					"response": [
+						{
+							"name": "Transaction Detail Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "{{portfolio_id}}", "transactions", "{{transaction_id}}", ""]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"id\": 36,\n    \"stock\": 1,\n    \"ticker\": \"AAPL\",\n    \"quantity\": \"100\",\n    \"price\": \"50.00\",\n    \"total_price\": \"5000.00\",\n    \"date\": \"2024-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Update Transaction",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 75,\n    \"price\": 155.00,\n    \"date\": \"2024-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "transactions", "{{transaction_id}}", ""]
+						}
+					}
+				},
+				{
+					"name": "Delete Transaction",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["portfolios", "{{portfolio_id}}", "transactions", "{{transaction_id}}", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Stocks",
+			"item": [
+				{
+					"name": "Get All Stocks (Portfolio View)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/stocks/",
+							"host": ["{{base_url}}"],
+							"path": ["stocks", ""]
+						}
+					}
+				},
+				{
+					"name": "Get Stock Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/stocks/{{stock_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["stocks", "{{stock_id}}", ""]
+						}
+					}
+				},
+				{
+					"name": "Delete Stock Holdings",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/stocks/{{stock_id}}/",
+							"host": ["{{base_url}}"],
+							"path": ["stocks", "{{stock_id}}", ""]
+						}
+					}
+				},
+				{
+					"name": "Get Stock Price",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/stocks/AAPL/price/",
+							"host": ["{{base_url}}"],
+							"path": ["stocks", "AAPL", "price", ""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Test Scenarios",
+			"item": [
+				{
+					"name": "Complete FIFO Test",
+					"item": [
+						{
+							"name": "1. Register User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"fifotest\",\n    \"email\": \"fifotest@example.com\",\n    \"first_name\": \"FIFO\",\n    \"last_name\": \"Test\",\n    \"date_of_birth\": \"1990-01-01\",\n    \"password\": \"testpass123\",\n    \"password_confirmation\": \"testpass123\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/users/register/",
+									"host": ["{{base_url}}"],
+									"path": ["users", "register", ""]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    pm.environment.set('access_token', response.access);",
+											"    pm.environment.set('refresh_token', response.refresh);",
+											"    pm.environment.set('user_id', response.user.id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "2. Create Portfolio",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"FIFO Test Portfolio\",\n    \"description\": \"Тестовый портфель для проверки FIFO\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/portfolios/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", ""]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    pm.environment.set('portfolio_id', response.id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "3. Buy 100 AAPL @ $50",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 100,\n    \"price\": 50.00,\n    \"date\": \"2024-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+								}
+							}
+						},
+						{
+							"name": "4. Buy 50 AAPL @ $55",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 50,\n    \"price\": 55.00,\n    \"date\": \"2024-10-05T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+								}
+							}
+						},
+						{
+							"name": "5. Sell 80 AAPL @ $60",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 80,\n    \"price\": 60.00,\n    \"date\": \"2024-10-10T10:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+								}
+							}
+						},
+						{
+							"name": "6. Sell 40 AAPL @ $65",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 40,\n    \"price\": 65.00,\n    \"date\": \"2024-10-15T10:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+								}
+							}
+						},
+						{
+							"name": "7. Check FIFO Result",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/fifo/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "{{portfolio_id}}", "fifo", ""]
+								}
+							}
+						},
+						{
+							"name": "8. Get Portfolio Stocks",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/portfolios/stocks/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "stocks", ""]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Auto Price Test",
+					"item": [
+						{
+							"name": "1. Login",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"testuser\",\n    \"password\": \"testpass123\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/users/login/",
+									"host": ["{{base_url}}"],
+									"path": ["users", "login", ""]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    const response = pm.response.json();",
+											"    pm.environment.set('access_token', response.access);",
+											"    pm.environment.set('refresh_token', response.refresh);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "2. Get Stock Price",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/stocks/AAPL/price/",
+									"host": ["{{base_url}}"],
+									"path": ["stocks", "AAPL", "price", ""]
+								}
+							}
+						},
+						{
+							"name": "3. Create Transaction with Auto Price",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 10,\n    \"date\": \"2024-10-25T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+									"host": ["{{base_url}}"],
+									"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+								}
+							}
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		}
+	]
+}
