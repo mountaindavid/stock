@@ -18,7 +18,7 @@ class PortfolioListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Portfolio.objects.filter(user=self.request.user)
+        return Portfolio.objects.filter(user=self.request.user).select_related('user')
 
     def perform_create(self, serializer):
         try:
@@ -27,12 +27,14 @@ class PortfolioListCreateView(generics.ListCreateAPIView):
             logger.warning(f"Portfolio creation failed for user {self.request.user.id}: {str(e)}")
             raise ValidationError("Portfolio with this name already exists for this user.")
 
+
 class PortfolioDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PortfolioSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Portfolio.objects.filter(user=self.request.user)
+        return Portfolio.objects.filter(user=self.request.user).select_related('user')
+
 
 class TransactionListCreateView(generics.ListCreateAPIView):
     serializer_class = TransactionSerializer
@@ -60,6 +62,7 @@ class TransactionListCreateView(generics.ListCreateAPIView):
             logger.error(f"Unexpected error creating transaction: {str(e)}")
             raise ValidationError("Failed to create transaction. Please check your data and try again.")
 
+
 class TransactionDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
@@ -74,6 +77,7 @@ class TransactionDetailView(generics.RetrieveUpdateDestroyAPIView):
         portfolio = get_object_or_404(Portfolio, pk=self.kwargs['portfolio_id'], user=self.request.user)
         context['portfolio'] = portfolio
         return context
+
 
 class PortfolioFIFOView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
@@ -101,6 +105,7 @@ class PortfolioFIFOView(generics.GenericAPIView):
                 {'error': 'Failed to calculate FIFO. Please try again later.'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 
 class PortfolioStockDetailView(generics.GenericAPIView):

@@ -34,3 +34,9 @@ class Transaction(models.Model):
 
     class Meta:
         ordering = ['date']
+        indexes = [
+            models.Index(fields=['portfolio', 'ticker', 'date']),
+            models.Index(fields=['portfolio', 'transaction_type']),
+            models.Index(fields=['ticker', 'date']),
+            models.Index(fields=['portfolio', 'date']),
+        ]

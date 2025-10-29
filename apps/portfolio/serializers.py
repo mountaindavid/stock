@@ -120,6 +120,7 @@ class PortfolioStockSerializer(serializers.Serializer):
     average_price_per_share = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
     last_updated = serializers.DateTimeField()
 
+
 class PortfolioSerializer(serializers.ModelSerializer):
     total_value = serializers.SerializerMethodField()
     
@@ -133,8 +134,8 @@ class PortfolioSerializer(serializers.ModelSerializer):
         from decimal import Decimal
         from .services import FIFOCalculator
         
-        # Get all transactions for this portfolio
-        transactions = Transaction.objects.filter(portfolio=obj)
+        # Get all transactions for this portfolio with prefetch_related to avoid N+1
+        transactions = Transaction.objects.filter(portfolio=obj).select_related('stock')
         
         if not transactions.exists():
             return Decimal('0.00')

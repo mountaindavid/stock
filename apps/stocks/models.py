@@ -11,4 +11,8 @@ class Stock(models.Model):
 
     class Meta:
         ordering = ['ticker']
+        indexes = [
+            models.Index(fields=['ticker']),
+            models.Index(fields=['current_price']),
+        ]
 

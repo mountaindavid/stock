@@ -15,19 +15,23 @@ class StockPriceView(generics.GenericAPIView):
             service = FinnhubService()
             price_data = service.get_stock_price(ticker)
             
-            # Update Stock model with current price
+            # Update Stock model with current price using atomic transaction
             from .models import Stock
-            try:
-                stock = Stock.objects.get(ticker=ticker.upper())
-                stock.current_price = price_data['price']
-                stock.save(update_fields=['current_price'])
-            except Stock.DoesNotExist:
-                # Create Stock if it doesn't exist
-                Stock.objects.create(
+            from django.db import transaction
+            
+            with transaction.atomic():
+                stock, created = Stock.objects.get_or_create(
                     ticker=ticker.upper(),
-                    name=ticker.upper(),
-                    current_price=price_data['price']
+                    defaults={
+                        'name': ticker.upper(),
+                        'current_price': price_data['price']
+                    }
                 )
+                
+                if not created:
+                    # Update existing stock with new price
+                    stock.current_price = price_data['price']
+                    stock.save(update_fields=['current_price'])
             
             return Response(price_data, status=status.HTTP_200_OK)
         except ValueError as e:
