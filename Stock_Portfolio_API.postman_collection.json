@@ -102,7 +102,21 @@
 							"host": ["{{base_url}}"],
 							"path": ["token", "refresh", ""]
 						}
-					}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.access);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
 					"name": "Verify Token",
@@ -112,16 +126,8 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"token\": \"{{access_token}}\"\n}"
-						},
 						"url": {
 							"raw": "{{base_url}}/token/verify/",
 							"host": ["{{base_url}}"],
@@ -157,17 +163,17 @@
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"first_name\": \"Updated\",\n    \"last_name\": \"Name\",\n    \"date_of_birth\": \"1990-01-01\"\n}"
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\",\n    \"date_of_birth\": \"1990-01-01\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/users/profile/",
@@ -182,17 +188,17 @@
 						"method": "PATCH",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"first_name\": \"New Name\"\n}"
+							"raw": "{\n    \"first_name\": \"Updated Test\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/users/profile/",
@@ -207,12 +213,12 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
@@ -254,17 +260,17 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"My Investment Portfolio\",\n    \"description\": \"Основной инвестиционный портфель\"\n}"
+							"raw": "{\n    \"name\": \"My Investment Portfolio\",\n    \"description\": \"Main portfolio for long-term investments\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/portfolios/",
@@ -310,17 +316,17 @@
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Updated Portfolio Name\",\n    \"description\": \"Обновленное описание портфеля\"\n}"
+							"raw": "{\n    \"name\": \"Updated Portfolio Name\",\n    \"description\": \"Updated portfolio description\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/",
@@ -360,23 +366,6 @@
 							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/fifo/",
 							"host": ["{{base_url}}"],
 							"path": ["portfolios", "{{portfolio_id}}", "fifo", ""]
-						}
-					}
-				},
-				{
-					"name": "Get Portfolio Stocks",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/portfolios/stocks/",
-							"host": ["{{base_url}}"],
-							"path": ["portfolios", "stocks", ""]
 						}
 					}
 				},
@@ -425,9 +414,9 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
+									"raw": "{{base_url}}/portfolios/1/transactions/",
 									"host": ["{{base_url}}"],
-									"path": ["portfolios", "{{portfolio_id}}", "transactions", ""]
+									"path": ["portfolios", "1", "transactions", ""]
 								}
 							},
 							"status": "OK",
@@ -435,7 +424,7 @@
 							"_postman_previewlanguage": "json",
 							"header": [],
 							"cookie": [],
-							"body": "[\n    {\n        \"id\": 36,\n        \"stock\": 1,\n        \"ticker\": \"AAPL\",\n        \"quantity\": \"100\",\n        \"price\": \"50.00\",\n        \"total_price\": \"5000.00\",\n        \"date\": \"2024-10-01T10:00:00Z\",\n        \"transaction_type\": \"BUY\"\n    }\n]"
+							"body": "[\n    {\n        \"id\": 1,\n        \"stock\": 1,\n        \"ticker\": \"AAPL\",\n        \"quantity\": \"10\",\n        \"price\": \"150.00\",\n        \"total_price\": 1500.0,\n        \"date\": \"2025-10-29T10:00:00Z\",\n        \"transaction_type\": \"BUY\"\n    }\n]"
 						}
 					]
 				},
@@ -445,17 +434,17 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 100,\n    \"price\": 50.00,\n    \"date\": \"2024-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 10,\n    \"price\": 150.00,\n    \"date\": \"2025-10-29T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
@@ -471,6 +460,7 @@
 									"if (pm.response.code === 201) {",
 									"    const response = pm.response.json();",
 									"    pm.environment.set('transaction_id', response.id);",
+									"    pm.environment.set('stock_id', response.stock);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -484,17 +474,17 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 80,\n    \"price\": 60.00,\n    \"date\": \"2024-10-10T10:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
+							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 5,\n    \"price\": 160.00,\n    \"date\": \"2025-10-29T11:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
@@ -509,17 +499,17 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"ticker\": \"MSFT\",\n    \"quantity\": 25,\n    \"date\": \"2024-10-20T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+							"raw": "{\n    \"ticker\": \"GOOGL\",\n    \"quantity\": 5,\n    \"date\": \"2025-10-29T12:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
@@ -551,9 +541,9 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/",
+									"raw": "{{base_url}}/portfolios/1/transactions/1/",
 									"host": ["{{base_url}}"],
-									"path": ["portfolios", "{{portfolio_id}}", "transactions", "{{transaction_id}}", ""]
+									"path": ["portfolios", "1", "transactions", "1", ""]
 								}
 							},
 							"status": "OK",
@@ -561,7 +551,7 @@
 							"_postman_previewlanguage": "json",
 							"header": [],
 							"cookie": [],
-							"body": "{\n    \"id\": 36,\n    \"stock\": 1,\n    \"ticker\": \"AAPL\",\n    \"quantity\": \"100\",\n    \"price\": \"50.00\",\n    \"total_price\": \"5000.00\",\n    \"date\": \"2024-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+							"body": "{\n    \"id\": 1,\n    \"stock\": 1,\n    \"ticker\": \"AAPL\",\n    \"quantity\": \"10\",\n    \"price\": \"150.00\",\n    \"total_price\": 1500.0,\n    \"date\": \"2025-10-29T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
 						}
 					]
 				},
@@ -571,17 +561,17 @@
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 75,\n    \"price\": 155.00,\n    \"date\": \"2024-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+							"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 15,\n    \"price\": 155.00,\n    \"date\": \"2025-10-29T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/",
@@ -610,59 +600,8 @@
 			]
 		},
 		{
-			"name": "Stocks",
+			"name": "Stock Prices",
 			"item": [
-				{
-					"name": "Get All Stocks (Portfolio View)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/stocks/",
-							"host": ["{{base_url}}"],
-							"path": ["stocks", ""]
-						}
-					}
-				},
-				{
-					"name": "Get Stock Details",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/stocks/{{stock_id}}/",
-							"host": ["{{base_url}}"],
-							"path": ["stocks", "{{stock_id}}", ""]
-						}
-					}
-				},
-				{
-					"name": "Delete Stock Holdings",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/stocks/{{stock_id}}/",
-							"host": ["{{base_url}}"],
-							"path": ["stocks", "{{stock_id}}", ""]
-						}
-					}
-				},
 				{
 					"name": "Get Stock Price",
 					"request": {
@@ -677,6 +616,60 @@
 							"raw": "{{base_url}}/stocks/AAPL/price/",
 							"host": ["{{base_url}}"],
 							"path": ["stocks", "AAPL", "price", ""]
+						}
+					},
+					"response": [
+						{
+							"name": "Stock Price Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/stocks/AAPL/price/",
+									"host": ["{{base_url}}"],
+									"path": ["stocks", "AAPL", "price", ""]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"ticker\": \"AAPL\",\n    \"price\": 269.7,\n    \"change\": 0.7,\n    \"percent_change\": 0.2602,\n    \"high\": 271.41,\n    \"low\": 267.11,\n    \"open\": 269.275,\n    \"previous_close\": 269.0,\n    \"timestamp\": 1761768000,\n    \"source\": \"finnhub.io\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get GOOGL Price",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/stocks/GOOGL/price/",
+							"host": ["{{base_url}}"],
+							"path": ["stocks", "GOOGL", "price", ""]
+						}
+					}
+				},
+				{
+					"name": "Get MSFT Price",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/stocks/MSFT/price/",
+							"host": ["{{base_url}}"],
+							"path": ["stocks", "MSFT", "price", ""]
 						}
 					}
 				}
@@ -731,17 +724,17 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
 										"key": "Content-Type",
 										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"name\": \"FIFO Test Portfolio\",\n    \"description\": \"Тестовый портфель для проверки FIFO\"\n}"
+									"raw": "{\n    \"name\": \"FIFO Test Portfolio\",\n    \"description\": \"Portfolio for testing FIFO calculations\"\n}"
 								},
 								"url": {
 									"raw": "{{base_url}}/portfolios/",
@@ -770,17 +763,17 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
 										"key": "Content-Type",
 										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 100,\n    \"price\": 50.00,\n    \"date\": \"2024-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 100,\n    \"price\": 50.00,\n    \"date\": \"2025-10-01T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
 								},
 								"url": {
 									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
@@ -795,17 +788,17 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
 										"key": "Content-Type",
 										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 50,\n    \"price\": 55.00,\n    \"date\": \"2024-10-05T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 50,\n    \"price\": 55.00,\n    \"date\": \"2025-10-15T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
 								},
 								"url": {
 									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
@@ -820,17 +813,17 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
 										"key": "Content-Type",
 										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 80,\n    \"price\": 60.00,\n    \"date\": \"2024-10-10T10:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 80,\n    \"price\": 60.00,\n    \"date\": \"2025-10-20T10:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
 								},
 								"url": {
 									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
@@ -845,17 +838,17 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
 										"key": "Content-Type",
 										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 40,\n    \"price\": 65.00,\n    \"date\": \"2024-10-15T10:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 40,\n    \"price\": 65.00,\n    \"date\": \"2025-10-25T10:00:00Z\",\n    \"transaction_type\": \"SELL\"\n}"
 								},
 								"url": {
 									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",
@@ -882,7 +875,7 @@
 							}
 						},
 						{
-							"name": "8. Get Portfolio Stocks",
+							"name": "8. Get Portfolio Details",
 							"request": {
 								"method": "GET",
 								"header": [
@@ -892,9 +885,9 @@
 									}
 								],
 								"url": {
-									"raw": "{{base_url}}/portfolios/stocks/",
+									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/",
 									"host": ["{{base_url}}"],
-									"path": ["portfolios", "stocks", ""]
+									"path": ["portfolios", "{{portfolio_id}}", ""]
 								}
 							}
 						}
@@ -932,6 +925,7 @@
 											"    const response = pm.response.json();",
 											"    pm.environment.set('access_token', response.access);",
 											"    pm.environment.set('refresh_token', response.refresh);",
+											"    pm.environment.set('user_id', response.user.id);",
 											"}"
 										],
 										"type": "text/javascript"
@@ -962,17 +956,17 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
 										"key": "Content-Type",
 										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 10,\n    \"date\": \"2024-10-25T10:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
+									"raw": "{\n    \"ticker\": \"AAPL\",\n    \"quantity\": 10,\n    \"date\": \"2025-10-29T12:00:00Z\",\n    \"transaction_type\": \"BUY\"\n}"
 								},
 								"url": {
 									"raw": "{{base_url}}/portfolios/{{portfolio_id}}/transactions/",

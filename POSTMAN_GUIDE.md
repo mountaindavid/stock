@@ -1,27 +1,27 @@
-# 🚀 Postman Collection для Stock Portfolio API
+# 🚀 Postman Collection for Stock Portfolio API
 
-## 📋 Настройка Postman
+## 📋 Postman Setup
 
-### 1. Базовые настройки
+### 1. Basic Settings
 - **Base URL**: `http://localhost:8000/api`
 - **Content-Type**: `application/json`
-- **Authorization**: Bearer Token (для защищенных endpoints)
+- **Authorization**: Bearer Token (for protected endpoints)
 
-### 2. Переменные окружения
-Создайте Environment в Postman со следующими переменными:
+### 2. Environment Variables
+Create an Environment in Postman with the following variables:
 ```
 base_url: http://localhost:8000/api
-access_token: (будет заполнен после логина)
-refresh_token: (будет заполнен после логина)
+access_token: (will be filled after login)
+refresh_token: (will be filled after login)
 portfolio_id: 1
 transaction_id: 1
 ```
 
 ---
 
-## 🔐 Аутентификация
+## 🔐 Authentication
 
-### 1. Регистрация пользователя
+### 1. User Registration
 ```http
 POST {{base_url}}/users/register/
 Content-Type: application/json
@@ -37,7 +37,7 @@ Content-Type: application/json
 }
 ```
 
-**Ожидаемый ответ:**
+**Expected Response:**
 ```json
 {
     "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -52,7 +52,7 @@ Content-Type: application/json
 }
 ```
 
-### 2. Логин
+### 2. Login
 ```http
 POST {{base_url}}/users/login/
 Content-Type: application/json
@@ -63,7 +63,7 @@ Content-Type: application/json
 }
 ```
 
-**Ожидаемый ответ:**
+**Expected Response:**
 ```json
 {
     "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -78,7 +78,7 @@ Content-Type: application/json
 }
 ```
 
-### 3. Обновление токена
+### 3. Token Refresh
 ```http
 POST {{base_url}}/token/refresh/
 Content-Type: application/json
@@ -88,7 +88,7 @@ Content-Type: application/json
 }
 ```
 
-### 4. Проверка токена
+### 4. Token Verification
 ```http
 POST {{base_url}}/token/verify/
 Authorization: Bearer {{access_token}}
@@ -101,15 +101,15 @@ Content-Type: application/json
 
 ---
 
-## 👤 Управление пользователями
+## 👤 User Management
 
-### 1. Получение профиля
+### 1. Get Profile
 ```http
 GET {{base_url}}/users/profile/
 Authorization: Bearer {{access_token}}
 ```
 
-### 2. Обновление профиля (PUT - все поля)
+### 2. Update Profile (PUT - all fields)
 ```http
 PUT {{base_url}}/users/profile/
 Authorization: Bearer {{access_token}}
@@ -124,7 +124,7 @@ Content-Type: application/json
 }
 ```
 
-### 3. Частичное обновление профиля (PATCH)
+### 3. Partial Profile Update (PATCH)
 ```http
 PATCH {{base_url}}/users/profile/
 Authorization: Bearer {{access_token}}
@@ -135,7 +135,7 @@ Content-Type: application/json
 }
 ```
 
-### 4. Смена пароля
+### 4. Change Password
 ```http
 POST {{base_url}}/users/change-password/
 Authorization: Bearer {{access_token}}
@@ -150,15 +150,15 @@ Content-Type: application/json
 
 ---
 
-## 📊 Управление портфелями
+## 📊 Portfolio Management
 
-### 1. Получение списка портфелей
+### 1. Get Portfolio List
 ```http
 GET {{base_url}}/portfolios/
 Authorization: Bearer {{access_token}}
 ```
 
-### 2. Создание портфеля
+### 2. Create Portfolio
 ```http
 POST {{base_url}}/portfolios/
 Authorization: Bearer {{access_token}}
@@ -166,17 +166,17 @@ Content-Type: application/json
 
 {
     "name": "My Investment Portfolio",
-    "description": "Основной инвестиционный портфель"
+    "description": "Main investment portfolio"
 }
 ```
 
-### 3. Получение деталей портфеля
+### 3. Get Portfolio Details
 ```http
 GET {{base_url}}/portfolios/{{portfolio_id}}/
 Authorization: Bearer {{access_token}}
 ```
 
-### 4. Обновление портфеля
+### 4. Update Portfolio
 ```http
 PUT {{base_url}}/portfolios/{{portfolio_id}}/
 Authorization: Bearer {{access_token}}
@@ -184,11 +184,11 @@ Content-Type: application/json
 
 {
     "name": "Updated Portfolio Name",
-    "description": "Обновленное описание портфеля"
+    "description": "Updated portfolio description"
 }
 ```
 
-### 5. Удаление портфеля
+### 5. Delete Portfolio
 ```http
 DELETE {{base_url}}/portfolios/{{portfolio_id}}/
 Authorization: Bearer {{access_token}}
@@ -196,15 +196,15 @@ Authorization: Bearer {{access_token}}
 
 ---
 
-## 💰 Управление транзакциями
+## 💰 Transaction Management
 
-### 1. Получение списка транзакций портфеля
+### 1. Get Portfolio Transactions
 ```http
 GET {{base_url}}/portfolios/{{portfolio_id}}/transactions/
 Authorization: Bearer {{access_token}}
 ```
 
-### 2. Создание транзакции покупки
+### 2. Create Buy Transaction
 ```http
 POST {{base_url}}/portfolios/{{portfolio_id}}/transactions/
 Authorization: Bearer {{access_token}}
@@ -219,7 +219,7 @@ Content-Type: application/json
 }
 ```
 
-### 3. Создание транзакции продажи
+### 3. Create Sell Transaction
 ```http
 POST {{base_url}}/portfolios/{{portfolio_id}}/transactions/
 Authorization: Bearer {{access_token}}
@@ -234,7 +234,7 @@ Content-Type: application/json
 }
 ```
 
-### 4. Создание транзакции с автоматическим получением цены
+### 4. Create Transaction with Automatic Price Fetching
 ```http
 POST {{base_url}}/portfolios/{{portfolio_id}}/transactions/
 Authorization: Bearer {{access_token}}
@@ -248,15 +248,15 @@ Content-Type: application/json
 }
 ```
 
-**Примечание:** Если поле `price` не указано, система автоматически получит текущую цену из кеша или через Finnhub API.
+**Note:** If the `price` field is not specified, the system will automatically fetch the current price from cache or via Finnhub API.
 
-### 5. Получение деталей транзакции
+### 5. Get Transaction Details
 ```http
 GET {{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/
 Authorization: Bearer {{access_token}}
 ```
 
-### 6. Обновление транзакции
+### 6. Update Transaction
 ```http
 PUT {{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/
 Authorization: Bearer {{access_token}}
@@ -271,7 +271,7 @@ Content-Type: application/json
 }
 ```
 
-### 7. Удаление транзакции
+### 7. Delete Transaction
 ```http
 DELETE {{base_url}}/portfolios/{{portfolio_id}}/transactions/{{transaction_id}}/
 Authorization: Bearer {{access_token}}
@@ -279,15 +279,15 @@ Authorization: Bearer {{access_token}}
 
 ---
 
-## 📈 FIFO Расчет
+## 📈 FIFO Calculation
 
-### 1. Получение FIFO расчета для портфеля
+### 1. Get FIFO Calculation for Portfolio
 ```http
 GET {{base_url}}/portfolios/{{portfolio_id}}/fifo/
 Authorization: Bearer {{access_token}}
 ```
 
-**Ожидаемый ответ:**
+**Expected Response:**
 ```json
 {
     "total_profit": "1300.00",
@@ -303,59 +303,15 @@ Authorization: Bearer {{access_token}}
 
 ---
 
-## 🏢 Управление акциями
+## 🏢 Stock Price Retrieval
 
-### 1. Получение списка акций
-```http
-GET {{base_url}}/stocks/
-Authorization: Bearer {{access_token}}
-```
-
-### 2. Создание акции
-```http
-POST {{base_url}}/stocks/
-Authorization: Bearer {{access_token}}
-Content-Type: application/json
-
-{
-    "ticker": "GOOGL",
-    "name": "Alphabet Inc.",
-    "current_price": 2800.00
-}
-```
-
-### 3. Получение деталей акции
-```http
-GET {{base_url}}/stocks/1/
-Authorization: Bearer {{access_token}}
-```
-
-### 4. Обновление акции
-```http
-PUT {{base_url}}/stocks/1/
-Authorization: Bearer {{access_token}}
-Content-Type: application/json
-
-{
-    "ticker": "AAPL",
-    "name": "Apple Inc.",
-    "current_price": 175.00
-}
-```
-
-### 5. Удаление акции
-```http
-DELETE {{base_url}}/stocks/1/
-Authorization: Bearer {{access_token}}
-```
-
-### 6. Получение текущей цены акции
+### 1. Get Current Stock Price
 ```http
 GET {{base_url}}/stocks/AAPL/price/
 Authorization: Bearer {{access_token}}
 ```
 
-**Ожидаемый ответ:**
+**Expected Response:**
 ```json
 {
     "ticker": "AAPL",
@@ -373,23 +329,23 @@ Authorization: Bearer {{access_token}}
 
 ---
 
-## 🧪 Тестовые сценарии
+## 🧪 Test Scenarios
 
-### Сценарий 1: Полный цикл работы с портфелем
+### Scenario 1: Complete Portfolio Workflow
 
-1. **Регистрация пользователя**
-2. **Создание портфеля**
-3. **Добавление транзакций покупки:**
-   - 100 акций AAPL по $50 (1 октября)
-   - 50 акций AAPL по $55 (5 октября)
-4. **Добавление транзакций продажи:**
-   - 80 акций AAPL по $60 (10 октября)
-   - 40 акций AAPL по $65 (15 октября)
-5. **Проверка FIFO расчета** - должен показать прибыль $1300 и остаток 30 акций по $55
+1. **User Registration**
+2. **Portfolio Creation**
+3. **Adding Buy Transactions:**
+   - 100 AAPL shares at $50 (October 1st)
+   - 50 AAPL shares at $55 (October 5th)
+4. **Adding Sell Transactions:**
+   - 80 AAPL shares at $60 (October 10th)
+   - 40 AAPL shares at $65 (October 15th)
+5. **FIFO Calculation Check** - should show $1300 profit and 30 shares remaining at $55
 
-### Сценарий 2: Тестирование ошибок
+### Scenario 2: Error Testing
 
-1. **Неверные учетные данные:**
+1. **Invalid Credentials:**
 ```http
 POST {{base_url}}/users/login/
 {
@@ -398,7 +354,7 @@ POST {{base_url}}/users/login/
 }
 ```
 
-2. **Создание портфеля с существующим именем:**
+2. **Creating Portfolio with Existing Name:**
 ```http
 POST {{base_url}}/portfolios/
 {
@@ -406,7 +362,7 @@ POST {{base_url}}/portfolios/
 }
 ```
 
-3. **Транзакция с отрицательным количеством:**
+3. **Transaction with Negative Quantity:**
 ```http
 POST {{base_url}}/portfolios/1/transactions/
 {
@@ -419,15 +375,15 @@ POST {{base_url}}/portfolios/1/transactions/
 
 ---
 
-## 🔧 Настройка Postman Collection
+## 🔧 Postman Collection Setup
 
-### 1. Создание Collection
-1. Создайте новую Collection "Stock Portfolio API"
-2. Добавьте все запросы выше
-3. Настройте переменные окружения
+### 1. Creating Collection
+1. Create a new Collection "Stock Portfolio API"
+2. Add all the requests above
+3. Configure environment variables
 
-### 2. Автоматическое сохранение токенов
-Добавьте в Tests секцию для запросов логина:
+### 2. Automatic Token Saving
+Add to the Tests section for login requests:
 ```javascript
 if (pm.response.code === 200) {
     const response = pm.response.json();
@@ -436,8 +392,8 @@ if (pm.response.code === 200) {
 }
 ```
 
-### 3. Автоматическое сохранение ID
-Добавьте в Tests секцию для создания портфеля:
+### 3. Automatic ID Saving
+Add to the Tests section for portfolio creation:
 ```javascript
 if (pm.response.code === 201) {
     const response = pm.response.json();
@@ -447,35 +403,35 @@ if (pm.response.code === 201) {
 
 ---
 
-## 📊 Проверка статусов ответов
+## 📊 Response Status Check
 
-### Успешные ответы:
-- **200 OK** - Успешный GET, PUT, PATCH
-- **201 Created** - Успешный POST
-- **204 No Content** - Успешный DELETE
+### Success Responses:
+- **200 OK** - Successful GET, PUT, PATCH
+- **201 Created** - Successful POST
+- **204 No Content** - Successful DELETE
 
-### Ошибки клиента:
-- **400 Bad Request** - Неверные данные
-- **401 Unauthorized** - Неверный токен
-- **403 Forbidden** - Нет доступа
-- **404 Not Found** - Ресурс не найден
+### Client Errors:
+- **400 Bad Request** - Invalid data
+- **401 Unauthorized** - Invalid token
+- **403 Forbidden** - No access
+- **404 Not Found** - Resource not found
 
-### Ошибки сервера:
-- **500 Internal Server Error** - Ошибка сервера
+### Server Errors:
+- **500 Internal Server Error** - Server error
 
 ---
 
-## 🚀 Быстрый старт
+## 🚀 Quick Start
 
-1. **Запустите Docker контейнеры:**
+1. **Start Docker containers:**
 ```bash
 docker-compose up -d
 ```
 
-2. **Импортируйте Collection в Postman**
-3. **Создайте Environment с переменными**
-4. **Начните с регистрации пользователя**
-5. **Сохраните токены в переменные**
-6. **Тестируйте все endpoints по порядку**
+2. **Import Collection into Postman**
+3. **Create Environment with variables**
+4. **Start with user registration**
+5. **Save tokens to variables**
+6. **Test all endpoints in order**
 
-Этот набор запросов позволит вам полностью протестировать все функции API и убедиться в корректной работе системы!
+This set of requests will allow you to fully test all API functions and ensure the system works correctly!

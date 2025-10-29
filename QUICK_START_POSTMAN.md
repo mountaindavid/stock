@@ -1,51 +1,51 @@
-# 🚀 Быстрый старт тестирования API через Postman
+# 🚀 Quick Start API Testing with Postman
 
-## 📥 Импорт файлов в Postman
+## 📥 Import Files to Postman
 
-### 1. Импорт Collection
-1. Откройте Postman
-2. Нажмите **Import** в левом верхнем углу
-3. Выберите файл `Stock_Portfolio_API.postman_collection.json`
-4. Нажмите **Import**
+### 1. Import Collection
+1. Open Postman
+2. Click **Import** in the top left corner
+3. Select the file `Stock_Portfolio_API.postman_collection.json`
+4. Click **Import**
 
-### 2. Импорт Environment
-1. Нажмите **Import** снова
-2. Выберите файл `Stock_Portfolio_Environment.postman_environment.json`
-3. Нажмите **Import**
-4. Выберите Environment "Stock Portfolio Environment" в правом верхнем углу
+### 2. Import Environment
+1. Click **Import** again
+2. Select the file `Stock_Portfolio_Environment.postman_environment.json`
+3. Click **Import**
+4. Select Environment "Stock Portfolio Environment" in the top right corner
 
-## 🐳 Запуск сервера
+## 🐳 Start Server
 
 ```bash
-# Запустите Docker контейнеры
+# Start Docker containers
 docker-compose up -d
 
-# Проверьте статус
+# Check status
 docker-compose ps
 ```
 
-## 🧪 Тестирование
+## 🧪 Testing
 
-### Шаг 1: Регистрация пользователя
-1. Откройте папку **Authentication** → **Register User**
-2. Нажмите **Send**
-3. Скопируйте `access_token` из ответа
-4. Вставьте его в переменную `access_token` в Environment
+### Step 1: User Registration
+1. Open folder **Authentication** → **Register User**
+2. Click **Send**
+3. Copy `access_token` from the response
+4. Paste it into the `access_token` variable in Environment
 
-### Шаг 2: Создание портфеля
-1. Откройте **Portfolios** → **Create Portfolio**
-2. Нажмите **Send**
-3. Скопируйте `id` из ответа
-4. Вставьте его в переменную `portfolio_id` в Environment
+### Step 2: Create Portfolio
+1. Open **Portfolios** → **Create Portfolio**
+2. Click **Send**
+3. Copy `id` from the response
+4. Paste it into the `portfolio_id` variable in Environment
 
-### Шаг 3: Тестирование FIFO
-1. Откройте папку **Test Scenarios** → **Complete FIFO Test**
-2. Выполните запросы по порядку (1-7)
-3. Проверьте результат в последнем запросе
+### Step 3: FIFO Testing
+1. Open folder **Test Scenarios** → **Complete FIFO Test**
+2. Execute requests in order (1-7)
+3. Check the result in the last request
 
-## 📊 Ожидаемые результаты
+## 📊 Expected Results
 
-### FIFO Test должен показать:
+### FIFO Test should show:
 ```json
 {
     "total_profit": "1300.00",
@@ -59,47 +59,47 @@ docker-compose ps
 }
 ```
 
-## 🔧 Полезные команды
+## 🔧 Useful Commands
 
-### Проверка статуса контейнеров:
+### Check container status:
 ```bash
 docker-compose ps
 ```
 
-### Просмотр логов:
+### View logs:
 ```bash
 docker-compose logs web
 ```
 
-### Перезапуск сервисов:
+### Restart services:
 ```bash
 docker-compose restart
 ```
 
-### Остановка сервисов:
+### Stop services:
 ```bash
 docker-compose down
 ```
 
-## ⚠️ Устранение неполадок
+## ⚠️ Troubleshooting
 
-### Ошибка подключения:
-- Убедитесь, что Docker контейнеры запущены
-- Проверьте, что порт 8000 свободен
+### Connection error:
+- Make sure Docker containers are running
+- Check that port 8000 is free
 
-### Ошибка аутентификации:
-- Проверьте, что токен скопирован правильно
-- Убедитесь, что токен не истек (30 минут)
+### Authentication error:
+- Check that the token was copied correctly
+- Make sure the token hasn't expired (30 minutes)
 
-### Ошибка валидации:
-- Проверьте формат данных в запросе
-- Убедитесь, что все обязательные поля заполнены
+### Validation error:
+- Check the data format in the request
+- Make sure all required fields are filled
 
-## 📝 Примечания
+## 📝 Notes
 
-- Токены автоматически сохраняются в переменные Environment
-- ID созданных ресурсов также сохраняются автоматически
-- Все запросы используют переменные из Environment
-- Для тестирования ошибок используйте неверные данные
+- Tokens are automatically saved to Environment variables
+- IDs of created resources are also saved automatically
+- All requests use variables from Environment
+- Use invalid data to test error scenarios
 
-Удачного тестирования! 🎯
+Happy testing! 🎯

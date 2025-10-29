@@ -1,22 +1,42 @@
 # Stock Portfolio Management System
 
-A Django REST API for managing stock portfolios with real-time market data integration.
+A Django REST API for managing stock portfolios with real-time market data integration and FIFO calculations.
 
 ## Features
 
 - **User Management**: Registration, authentication, profile management
 - **Portfolio Management**: Create and manage multiple portfolios
 - **Stock Transactions**: Buy/sell stocks with automatic price fetching
-- **Real-time Data**: Integration with Polygon.io for current stock prices
+- **Real-time Data**: Integration with Finnhub.io for current stock prices
+- **FIFO Calculations**: First-In-First-Out profit/loss calculations
 - **Portfolio Analytics**: Calculate total value, profit/loss, and performance metrics
+- **Caching**: Redis-based caching for improved performance
+- **Transaction Validation**: Prevents selling more shares than owned
+- **Automatic Stock Creation**: Creates stock records automatically from transactions
 
 ## Tech Stack
 
 - **Backend**: Django 4.2.7 + Django REST Framework
 - **Database**: PostgreSQL + Redis (caching)
 - **Authentication**: JWT tokens
-- **Market Data**: Polygon.io API
+- **Market Data**: Finnhub.io API
 - **Containerization**: Docker + Docker Compose
+
+## Architecture
+
+The system follows a clean architecture pattern with:
+
+- **Models**: Django ORM models for data persistence
+- **Serializers**: Data validation and serialization
+- **Views**: API endpoints and business logic
+- **Services**: Business logic and external API integration
+- **Caching**: Redis for performance optimization
+
+### Key Components
+
+- **FIFOCalculator**: Centralized service for FIFO calculations with caching
+- **FinnhubService**: Integration with Finnhub.io for real-time stock prices
+- **Transaction Validation**: Ensures data integrity and prevents invalid transactions
 
 ## Quick Start
 
@@ -45,17 +65,16 @@ DB_PASSWORD=your-password
 DB_HOST=localhost
 DB_PORT=5432
 
-# Polygon.io API Key (Required for market data)
-POLYGON_API_KEY=your-polygon-api-key-here
+# Finnhub.io API Key (Required for market data)
+FINNHUB_API_KEY=your-finnhub-api-key-here
 ```
 
-### 3. Get Polygon.io API Key
+### 3. Get Finnhub.io API Key
 
-1. Visit [polygon.io](https://polygon.io/)
-2. Sign up for an account
-3. Choose a plan (Starter: $99/month)
-4. Get your API key from the dashboard
-5. Add it to your `.env` file
+1. Visit [finnhub.io](https://finnhub.io/)
+2. Sign up for a free account
+3. Get your API key from the dashboard
+4. Add it to your `.env` file
 
 ### 4. Run with Docker
 
@@ -92,9 +111,11 @@ docker-compose exec web python manage.py createsuperuser
 ### Portfolios
 - `GET /api/portfolios/` - List user portfolios
 - `POST /api/portfolios/` - Create portfolio
-- `GET /api/portfolios/{id}/` - Get portfolio details
+- `GET /api/portfolios/{id}/` - Get portfolio details with total value
 - `PUT /api/portfolios/{id}/` - Update portfolio
 - `DELETE /api/portfolios/{id}/` - Delete portfolio
+- `GET /api/portfolios/{id}/fifo/` - Get FIFO profit/loss calculations
+- `GET /api/portfolios/{id}/stocks/{stock_id}/` - Get specific stock in portfolio
 
 ### Transactions
 - `GET /api/portfolios/{id}/transactions/` - List transactions
@@ -103,12 +124,8 @@ docker-compose exec web python manage.py createsuperuser
 - `PUT /api/portfolios/{id}/transactions/{id}/` - Update transaction
 - `DELETE /api/portfolios/{id}/transactions/{id}/` - Delete transaction
 
-### Stocks
-- `GET /api/stocks/` - List all stocks
-- `POST /api/stocks/` - Create stock
-- `GET /api/stocks/{id}/` - Get stock details
-- `PUT /api/stocks/{id}/` - Update stock
-- `DELETE /api/stocks/{id}/` - Delete stock
+### Stock Prices
+- `GET /api/stocks/{ticker}/price/` - Get current stock price
 
 ## Usage Examples
 
@@ -119,10 +136,11 @@ curl -X POST http://localhost:8000/api/portfolios/1/transactions/ \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "stock_ticker": "AAPL",
+    "ticker": "AAPL",
     "transaction_type": "BUY",
     "quantity": 10,
-    "price_per_share": 150.00
+    "price": 150.00,
+    "date": "2025-10-29T10:00:00Z"
   }'
 ```
 
@@ -133,10 +151,25 @@ curl -X POST http://localhost:8000/api/portfolios/1/transactions/ \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "stock_ticker": "AAPL",
+    "ticker": "AAPL",
     "transaction_type": "BUY",
-    "quantity": 10
+    "quantity": 10,
+    "date": "2025-10-29T10:00:00Z"
   }'
+```
+
+### Get FIFO Calculations
+
+```bash
+curl -X GET http://localhost:8000/api/portfolios/1/fifo/ \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Get Current Stock Price
+
+```bash
+curl -X GET http://localhost:8000/api/stocks/AAPL/price/ \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ## Development
@@ -171,11 +204,11 @@ docker-compose exec web flake8
 
 ## Troubleshooting
 
-### Polygon.io API Issues
+### Finnhub.io API Issues
 
-- **API Key Not Configured**: Make sure `POLYGON_API_KEY` is set in `.env`
-- **Rate Limits**: Polygon.io has rate limits based on your plan
-- **API Errors**: Check Polygon.io status page for service issues
+- **API Key Not Configured**: Make sure `FINNHUB_API_KEY` is set in `.env`
+- **Rate Limits**: Finnhub.io has rate limits (free tier: 60 calls/minute)
+- **API Errors**: Check Finnhub.io status page for service issues
 
 ### Database Issues
 
