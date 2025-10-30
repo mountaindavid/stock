@@ -121,13 +121,23 @@ class PortfolioStockSerializer(serializers.Serializer):
     last_updated = serializers.DateTimeField()
 
 
+class PortfolioStockSummarySerializer(serializers.Serializer):
+    """Simplified serializer for stocks in portfolio summary"""
+    ticker = serializers.CharField()
+    quantity = serializers.DecimalField(max_digits=15, decimal_places=0)
+    average_price_per_share = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    current_price = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    total_value = serializers.DecimalField(max_digits=15, decimal_places=2, allow_null=True)
+
+
 class PortfolioSerializer(serializers.ModelSerializer):
     total_value = serializers.SerializerMethodField()
+    stocks = serializers.SerializerMethodField()
     
     class Meta:
         model = Portfolio
-        fields = ['id', 'user', 'name', 'description', 'created_at', 'updated_at', 'total_value']
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'total_value']
+        fields = ['id', 'user', 'name', 'description', 'created_at', 'updated_at', 'total_value', 'stocks']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'total_value', 'stocks']
 
     def get_total_value(self, obj):
         """Calculate total portfolio value using current market prices"""
@@ -158,6 +168,55 @@ class PortfolioSerializer(serializers.ModelSerializer):
         
         # Round to 2 decimal places
         return total_value.quantize(Decimal('0.01'))
+
+    def get_stocks(self, obj):
+        """Get all stocks in the portfolio with their holdings information"""
+        from decimal import Decimal
+        from .services import FIFOCalculator
+        
+        # Get all transactions for this portfolio
+        transactions = Transaction.objects.filter(portfolio=obj).select_related('stock')
+        
+        if not transactions.exists():
+            return []
+        
+        # Use FIFOCalculator to get holdings
+        calculator = FIFOCalculator()
+        holdings = calculator.calculate_holdings(transactions)
+        
+        stocks_data = []
+        
+        # Process each holding
+        for ticker, holding in holdings.items():
+            quantity = holding['quantity']
+            stock = holding['stock']
+            average_price_per_share = holding['average_price_per_share']
+            last_updated = holding['last_updated']
+            
+            if quantity > 0 and stock:
+                # Get current market price
+                current_price = stock.current_price
+                
+                # Calculate total value (quantity * current_price)
+                total_value = quantity * current_price if current_price else None
+                
+                # Round prices to 2 decimal places
+                if average_price_per_share:
+                    average_price_per_share = average_price_per_share.quantize(Decimal('0.01'))
+                if current_price:
+                    current_price = current_price.quantize(Decimal('0.01'))
+                if total_value:
+                    total_value = total_value.quantize(Decimal('0.01'))
+                
+                stocks_data.append({
+                    'ticker': ticker,
+                    'quantity': str(int(quantity)),
+                    'average_price_per_share': average_price_per_share,
+                    'current_price': current_price,
+                    'total_value': total_value
+                })
+        
+        return stocks_data
 
     def validate_name(self, value):
         user = self.context['request'].user
